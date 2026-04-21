@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="description"
+        content="GRAFT: Geometric Refinement and Fitting Transformer for Human Scene Reconstruction.">
+  <meta name="keywords" content="GRAFT, human scene reconstruction, 3D reconstruction, project page">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GRAFT: Geometric Refinement and Fitting Transformer for Human Scene Reconstruction</title>
+
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro" rel="stylesheet">
+  <link rel="stylesheet" href="./static/css/bulma.min.css">
+  <link rel="stylesheet" href="./static/css/fontawesome.all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  <link rel="stylesheet" href="./static/css/index.css">
+  <link rel="icon" type="image/png" href="./static/images/graft.png">
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/"
+      }
+    }
+  </script>
+  <script defer src="./static/js/fontawesome.all.min.js"></script>
+
+  <style>
+    :root {
+      --accent: #3273dc;
+      --bg-light: #f9fafb;
+      --shadow-card: 0 8px 28px rgba(0,0,0,0.07);
+      --radius: 14px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    .hero-body { padding-top: 2.5rem; padding-bottom: 1.5rem; }
+
+    .title-logo {
+      width: 56px; height: 56px; object-fit: contain;
+      vertical-align: middle; margin-right: 0.35rem; margin-bottom: 0.15rem;
+    }
+
+    .author-row, .meta-row {
+      display: flex; justify-content: center; flex-wrap: wrap;
+      gap: 0.5rem 1rem; margin-top: 1rem;
+    }
+    .author-row span, .meta-row span { white-space: nowrap; }
+
+    .hero-buttons {
+      margin-top: 1.5rem; display: flex; justify-content: center;
+      gap: 0.4rem; flex-wrap: wrap;
+    }
+    .hero-buttons .button:not(:last-child) { margin-right: 0; }
+    .hero-buttons .button.hero-dark {
+      background: #111;
+      border-color: #111;
+      color: #fff;
+    }
+    .hero-buttons .button.hero-dark .icon,
+    .hero-buttons .button.hero-dark i {
+      color: #fff;
+    }
+    .hero-buttons .button.hero-dark:hover {
+      background: #000;
+      border-color: #000;
+      color: #fff;
+    }
+
+    /* Section styling */
+    .content-section {
+      padding-top: 2rem;
+      padding-bottom: 2rem;
+    }
+    .section-title {
+      font-family: 'Google Sans', sans-serif;
+      margin-bottom: 1.2rem !important;
+    }
+    .section-subtitle {
+      color: #555;
+      max-width: 780px;
+      margin: 0 auto 1.5rem;
+      line-height: 1.7;
+      font-size: 1.02rem;
+    }
+
+    /* Figure card */
+    .figure-card {
+      background: #fff;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-card);
+      overflow: hidden;
+      margin-bottom: 0.5rem;
+    }
+    .figure-card img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+    .figure-caption {
+      font-size: 0.88rem;
+      color: #555;
+      line-height: 1.55;
+      padding: 0.8rem 1.1rem;
+      text-align: center;
+    }
+    .figure-caption strong {
+      color: #222;
+    }
+
+    /* Video card */
+    .video-card {
+      background: #fff; border-radius: var(--radius);
+      box-shadow: var(--shadow-card); overflow: hidden;
+    }
+    .video-frame { background: #000; display: flex; justify-content: center; align-items: center; }
+    .video-frame video { width: 100%; height: auto; max-height: 72vh; display: block; object-fit: contain; }
+
+    /* thumb strip */
+    .thumb-strip {
+      display: flex; gap: 0.55rem; overflow-x: auto;
+      padding: 0.5rem 0 0.75rem; scrollbar-width: thin;
+    }
+    .thumb-item {
+      flex-shrink: 0; cursor: pointer; border-radius: 8px; overflow: hidden;
+      border: 3px solid transparent; transition: border-color .2s, transform .15s;
+    }
+    .thumb-item:hover { transform: scale(1.04); }
+    .thumb-item.active { border-color: var(--accent); }
+    .thumb-item img { width: 90px; height: 90px; object-fit: cover; display: block; }
+
+    /* nav */
+    .nav-arrows {
+      display: flex; align-items: center; justify-content: center;
+      gap: 1rem; margin: 0.6rem 0 0.8rem;
+    }
+    .nav-arrows button {
+      background: #fff;
+      border: 1.5px solid #ddd;
+      border-radius: 50%;
+      width: 2.4rem; height: 2.4rem;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      padding: 0;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+      transition: background .15s, box-shadow .15s, border-color .15s;
+      flex-shrink: 0;
+    }
+    .nav-arrows button:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+      box-shadow: 0 3px 10px rgba(50,115,220,0.35);
+    }
+    .nav-arrows button:hover svg { stroke: #fff; }
+    .nav-arrows button svg { stroke: #555; transition: stroke .15s; }
+    .nav-counter { font-size: 0.85rem; color: #555; min-width: 4rem; text-align: center; }
+
+    /* viewer card */
+    .viewer-card {
+      background: #fff; border-radius: var(--radius);
+      box-shadow: 0 6px 22px rgba(0,0,0,0.09); overflow: hidden; position: relative;
+    }
+    .card-label {
+      position: absolute; top: 10px; left: 14px; z-index: 5;
+      background: rgba(0,0,0,0.55); color: #fff; font-size: 0.78rem;
+      padding: 2px 9px; border-radius: 10px; pointer-events: none;
+    }
+    .card-canvas { display: block; width: 100%; height: 520px; }
+    .rotate-cue {
+      position: absolute; bottom: 10px; right: 14px; z-index: 5;
+      background: rgba(0,0,0,0.45); color: #fff; font-size: 0.72rem;
+      padding: 3px 9px; border-radius: 10px; pointer-events: none;
+      opacity: 1; transition: opacity 1s;
+    }
+    .rotate-cue.hidden { opacity: 0; }
+    .canvas-loading {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      color: #888; font-size: 0.9rem; pointer-events: none; z-index: 10;
+    }
+
+    /* logos */
+    .imagesrow {
+      display: flex; flex-wrap: wrap; justify-content: center;
+      align-items: center; gap: 1.5rem 2.5rem; margin-top: 1.5rem;
+    }
+    .imagesrow img { height: 40px; width: auto; }
+
+    /* bibtex */
+    .bibtex-wrap {
+      position: relative;
+      margin-top: 0.75rem;
+    }
+    .bibtex-block {
+      background: #1e1e2e;
+      color: #cdd6f4;
+      border-radius: 10px;
+      padding: 1.2rem 1.4rem;
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+      font-size: 0.82rem;
+      line-height: 1.6;
+      overflow-x: auto;
+      white-space: pre;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .bibtex-copy {
+      position: absolute;
+      top: 0.55rem;
+      right: 0.65rem;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 7px;
+      color: #cdd6f4;
+      cursor: pointer;
+      padding: 0.28rem 0.6rem;
+      font-size: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: background .15s;
+      line-height: 1;
+    }
+    .bibtex-copy:hover { background: rgba(255,255,255,0.18); }
+    .bibtex-copy svg { width: 14px; height: 14px; flex-shrink: 0; }
+    pre { white-space: pre-wrap; word-break: break-word; }
+
+    /* Abstract */
+    .abstract-text {
+      max-width: 820px;
+      margin: 0 auto;
+      text-align: justify;
+      line-height: 1.75;
+      color: #333;
+      font-size: 1.02rem;
+    }
+
+    /* Divider */
+    .section-divider {
+      border: 0;
+      border-top: 1px solid #eee;
+      margin: 0;
+    }
+
+    /* ── Page Nav ─────────────────────────────────────────────── */
+    #page-nav {
+      position: fixed;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      gap: 0.1rem;
+    }
+    #page-nav a {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      text-decoration: none;
+      color: #aaa;
+      font-size: 0.74rem;
+      font-family: 'Google Sans', sans-serif;
+      padding: 0.28rem 0;
+      transition: color 0.18s;
+      white-space: nowrap;
+    }
+    #page-nav a .pn-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: #ccc;
+      flex-shrink: 0;
+      transition: background 0.18s, transform 0.18s;
+    }
+    #page-nav a.active { color: #222; }
+    #page-nav a.active .pn-dot {
+      background: var(--accent);
+      transform: scale(1.5);
+    }
+    #page-nav a:hover { color: #555; }
+    #page-nav a:hover .pn-dot { background: #888; }
+
+    /* Hamburger */
+    #nav-hamburger {
+      display: none;
+      position: fixed;
+      top: 0.9rem;
+      right: 0.9rem;
+      z-index: 200;
+      background: #fff;
+      border: 1.5px solid #e4e4e4;
+      border-radius: 9px;
+      width: 2.2rem; height: 2.2rem;
+      align-items: center; justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.09);
+      transition: box-shadow 0.15s;
+    }
+    #nav-hamburger:hover { box-shadow: 0 3px 12px rgba(0,0,0,0.15); }
+
+    #nav-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.22);
+      z-index: 180;
+    }
+    #nav-overlay.open { display: block; }
+
+    #nav-mobile-panel {
+      display: none;
+      position: fixed;
+      top: 0; right: 0;
+      width: 195px; height: 100vh;
+      background: #fff;
+      box-shadow: -4px 0 20px rgba(0,0,0,0.11);
+      z-index: 190;
+      padding: 3.5rem 1.2rem 1.5rem;
+      flex-direction: column;
+      gap: 0.15rem;
+      overflow-y: auto;
+    }
+    #nav-mobile-panel.open { display: flex; }
+    #nav-mobile-panel a {
+      text-decoration: none;
+      color: #555;
+      font-size: 0.92rem;
+      font-family: 'Google Sans', sans-serif;
+      padding: 0.45rem 0.65rem;
+      border-radius: 7px;
+      transition: background 0.15s, color 0.15s;
+    }
+    #nav-mobile-panel a.active {
+      background: #eef3fc;
+      color: var(--accent);
+      font-weight: 600;
+    }
+    #nav-mobile-panel a:hover:not(.active) { background: #f5f5f5; }
+
+    @media (max-width: 1280px) {
+      #page-nav { display: none; }
+      #nav-hamburger { display: flex; }
+    }
+    @media (min-width: 1281px) {
+      #nav-hamburger, #nav-mobile-panel, #nav-overlay { display: none !important; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ===== SECTION NAV ===== -->
+<nav id="page-nav" aria-label="Page sections"></nav>
+<button id="nav-hamburger" aria-label="Open navigation" aria-expanded="false">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#444" stroke-width="2.3" stroke-linecap="round">
+    <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+  </svg>
+</button>
+<div id="nav-overlay"></div>
+<nav id="nav-mobile-panel" aria-label="Page sections"></nav>
+
+<!-- ===== HERO ===== -->
+<section class="hero">
+  <div class="hero-body">
+    <div class="container is-max-desktop">
+      <div class="columns is-centered">
+        <div class="column has-text-centered">
+
+          <h1 class="title is-2 publication-title" style="margin:0; text-align:center;">
+            <img class="title-logo" src="./static/images/graft_wobg.png" alt="GRAFT logo">GRAFT: Geometric Refinement and Fitting Transformer for Human Scene Reconstruction
+          </h1>
+
+          <div class="is-size-5 publication-authors author-row" style="margin-top:1.2rem;">
+            <span><a href="https://pradyumnaym.github.io/" target="_blank">Pradyumna&nbsp;YM</a><sup>1,2</sup></span>
+            <span><a href="https://yuxuan-xue.com/" target="_blank">Yuxuan&nbsp;Xue</a><sup>1,2,&dagger;</sup></span>
+            <span><a href="https://fanegg.github.io/" target="_blank">Yue&nbsp;Chen</a><sup>3</sup></span>
+            <span><a href="https://virtualhumans.mpi-inf.mpg.de/people/Kister.html" target="_blank">Nikita&nbsp;Kister</a><sup>1,2</sup></span>
+            <span><a href="https://istvansarandi.com/" target="_blank">Istv&#225;n&nbsp;S&#225;r&#225;ndi</a><sup>1,2</sup></span>
+            <span><a href="https://virtualhumans.mpi-inf.mpg.de/people/pons-moll.html" target="_blank">Gerard&nbsp;Pons-Moll</a><sup>1,2,4</sup></span>
+          </div>
+
+          <div class="is-size-6" style="color:#555; margin-top:0.5rem; text-align:center; line-height:1.8;">
+            <sup>1</sup>University of T&uuml;bingen&ensp;
+            <sup>2</sup>T&uuml;bingen AI Center&ensp;
+            <sup>3</sup>Westlake University&ensp;
+            <sup>4</sup>Max Planck Institute for Informatics<br>
+            <sup>&dagger;</sup>Corresponding author
+          </div>
+
+          <div class="is-size-6 meta-row" style="color:#666; margin-top:0.4rem;">
+            <span>2026</span>
+          </div>
+
+          <div class="hero-buttons">
+            <a href="./paper/graft.pdf" class="button is-normal is-rounded hero-dark" target="_blank" rel="noopener">
+              <span class="icon"><i class="fas fa-file-pdf"></i></span>
+              <span>Paper</span>
+            </a>
+            <a href="#" class="button is-normal is-rounded hero-dark" title="Coming soon">
+              <span class="icon"><i class="ai ai-arxiv"></i></span>
+              <span>arXiv</span>
+            </a>
+            <a href="https://github.com/pradyumnaym/graft" class="button is-normal is-rounded hero-dark" target="_blank" rel="noopener">
+              <span class="icon"><i class="fab fa-github"></i></span>
+              <span>Code</span>
+            </a>
+            <a href="#BibTeX" class="button is-normal is-rounded is-light">
+              <span class="icon"><i class="fas fa-quote-right"></i></span>
+              <span>BibTeX</span>
+            </a>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== RESULTS VIDEO ===== -->
+<section class="section content-section" id="results" data-nav-label="Results" style="padding-top:0.5rem; padding-bottom:1.5rem;">
+  <div class="container" style="max-width:1100px;">
+    <div class="video-card">
+      <div class="video-frame">
+        <video id="resultsVideo" controls autoplay muted loop preload="metadata" playsinline>
+          <source src="./static/videos/results_many.mp4" type="video/mp4">
+        </video>
+      </div>
+      <div class="figure-caption">
+        <strong>In-the-wild results.</strong> GRAFT handles diverse single- and multi-person scenes with physically plausible human&ndash;scene interactions.
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="section-divider">
+
+<!-- ===== ABSTRACT ===== -->
+<section class="section content-section" id="abstract" data-nav-label="Abstract">
+  <div class="container is-max-desktop">
+    <div class="has-text-centered">
+      <h2 class="title is-3 section-title">Abstract</h2>
+    </div>
+    <div class="abstract-text">
+      Reconstructing physically plausible 3D human-scene interactions (HSI) from a single image currently presents a trade-off: optimization-based methods offer accurate contact but are slow (~20&thinsp;s), while feed-forward approaches are fast yet lack explicit interaction reasoning, producing floating and interpenetration artifacts.
+      Our key insight is that geometry-based human&ndash;scene fitting can be amortized into fast feed-forward inference. We present <strong>GRAFT</strong> (<strong>G</strong>eometric <strong>R</strong>efinement <strong>A</strong>nd <strong>F</strong>itting <strong>T</strong>ransformer), a learned HSI prior that predicts <em>Interaction Gradients</em>: corrective parameter updates that iteratively refine human meshes by reasoning about their 3D relationship to the surrounding scene.
+      GRAFT encodes the interaction state into compact body-anchored tokens, each grounded in the scene geometry via <em>Geometric Probes</em> that capture spatial relationships with nearby surfaces.
+      A lightweight transformer recurrently updates human meshes and re-probes the scene, ensuring the final pose aligns with both learned priors and observed geometry.
+      GRAFT operates either as an end-to-end reconstructor using image features, or with geometry alone as a transferable plug-and-play HSI prior that improves feed-forward methods without retraining.
+      Experiments show GRAFT improves interaction quality by up to 113% over state-of-the-art feed-forward methods and matches optimization-based interaction quality at ~50&times; lower runtime, while generalizing seamlessly to in-the-wild multi-person scenes and being preferred in 64.8% of a three-way user study.
+    </div>
+  </div>
+</section>
+
+<!-- ===== TEASER FIGURE ===== -->
+<section class="section content-section" style="padding-top:0.25rem; padding-bottom:1rem;">
+  <div class="container" style="max-width:1000px;">
+    <div class="figure-card">
+      <img src="./static/images/teaser.png" alt="GRAFT teaser figure">
+      <div class="figure-caption">
+        <strong>Fast, geometry-grounded human&ndash;scene reconstruction.</strong> From a single image, GRAFT reconstructs humans and scenes with physically coherent interactions (<em>left</em>), breaking the speed&ndash;accuracy tradeoff of prior methods (<em>right</em>).
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="section-divider">
+
+<!-- ===== METHOD ===== -->
+<section class="section content-section" id="method" data-nav-label="Method">
+  <div class="container" style="max-width:1100px;">
+    <div class="has-text-centered">
+      <h2 class="title is-3 section-title">Method</h2>
+    </div>
+    <p class="section-subtitle has-text-centered">
+      GRAFT initializes humans and scene geometry from a single image, then iteratively refines body parameters via a lightweight transformer.
+      Interaction state is encoded as 24 compact <em>HSI tokens</em> grounded via <em>Geometric Probes</em>, which the transformer updates recurrently&mdash;predicting an <em>Interaction Gradient</em> and re-probing the scene each step.
+    </p>
+
+    <!-- Method overview figure -->
+    <div class="figure-card" style="max-width:1050px; margin:0 auto;">
+      <img src="./static/images/overview.png" alt="GRAFT method overview">
+      <div class="figure-caption">
+        <strong>Overview of GRAFT.</strong> Foundation models provide coarse initialization (<em>left</em>). Geometric probes encode local contact cues into compact HSI tokens, from which GRAFT predicts iterative parameter updates (<em>center</em>). The transformer alternates geometry self-attention and visual cross-attention (<em>right</em>).
+      </div>
+    </div>
+
+    <!-- Probes video -->
+    <div class="has-text-centered" style="margin-top:2rem; margin-bottom:0.8rem;">
+      <h3 class="title is-4" style="font-family:'Google Sans',sans-serif;">Geometric Probes &amp; Iterative Refinement</h3>
+    </div>
+    <div class="video-card" style="max-width:1050px; margin:0 auto;">
+      <div class="video-frame">
+        <video controls muted loop preload="metadata" playsinline>
+          <source src="./static/videos/probes.mp4" type="video/mp4">
+        </video>
+      </div>
+      <div class="figure-caption">
+        <strong>Geometric Probes in action.</strong> Each probe queries the nearest scene point at a body joint or vertex, capturing offset and surface normal. Probes are recomputed each iteration, giving the model direct physical feedback as the mesh updates.
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="section-divider">
+
+<!-- ===== HSI PRIOR ===== -->
+<section class="section content-section" id="hsi-prior" data-nav-label="HSI Prior">
+  <div class="container" style="max-width:1100px;">
+    <div class="has-text-centered">
+      <h2 class="title is-3 section-title">Learned HSI Prior</h2>
+    </div>
+    <p class="section-subtitle has-text-centered">
+      On geometry alone&mdash;no image features&mdash;GRAFT acts as a plug-and-play HSI prior, projecting any perturbed mesh back to a valid interaction. This lets it improve other methods without retraining, boosting Human3R&rsquo;s contact F1 by up to 44%.
+    </p>
+    <div class="video-card" style="max-width:1050px; margin:0 auto;">
+      <div class="video-frame">
+        <video controls muted loop preload="metadata" playsinline>
+          <source src="./static/videos/hsi_prior.mp4" type="video/mp4">
+        </video>
+      </div>
+      <div class="figure-caption">
+        <strong>GRAFT as a learned HSI prior.</strong> After applying translation and pose perturbations (red), GRAFT recovers a valid human&ndash;scene interaction (green) using geometry alone&mdash;no visual features.
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="section-divider">
+
+<!-- ===== QUALITATIVE COMPARISONS ===== -->
+<section class="section content-section" id="comparisons" data-nav-label="Comparisons">
+  <div class="container" style="max-width:1100px;">
+    <div class="has-text-centered">
+      <h2 class="title is-3 section-title">Qualitative Comparisons</h2>
+    </div>
+    <p class="section-subtitle has-text-centered">
+      Comparison against feed-forward baselines UniSH and Human3R on in-the-wild images. Both prior methods lack explicit interaction modeling, leading to hovering and penetration artifacts. GRAFT produces scene-consistent, physically coherent contact.
+    </p>
+    <div class="figure-card" style="max-width:1050px; margin:0 auto;">
+      <img src="./static/images/qualitative_result.png" alt="Qualitative comparison with Human3R and UniSH">
+      <div class="figure-caption">
+        <strong>Qualitative comparison vs. UniSH and Human3R.</strong> Prior feed-forward methods often produce hovering or penetration artifacts. GRAFT recovers physically coherent, scene-consistent interactions.
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="section-divider">
+
+<!-- ===== INTERACTIVE RESULTS ===== -->
+<section class="section content-section" id="interactive" data-nav-label="3D Results">
+  <div class="container" style="max-width:1300px;">
+    <div class="has-text-centered" style="margin-bottom:1.1rem;">
+      <h2 class="title is-3 section-title">Interactive 3D Results</h2>
+      <p class="subtitle is-6" style="margin-top:0.3rem;">
+        Select an image to inspect the corresponding GRAFT reconstruction.
+        Drag to rotate &middot; scroll to zoom.
+      </p>
+    </div>
+
+    <div id="thumbStrip" class="thumb-strip"></div>
+
+    <div class="nav-arrows">
+      <button id="prevBtn" title="Previous">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <span id="navCounter" class="nav-counter">1 / 50</span>
+      <button id="nextBtn" title="Next">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+
+    <div class="viewer-card" style="margin-top:0.4rem;">
+      <div class="card-label">Ours</div>
+      <div id="rotateCue" class="rotate-cue">&#8635; drag to rotate</div>
+      <div id="canvasLoading" class="canvas-loading">Loading&hellip;</div>
+      <canvas id="canvasOurs" class="card-canvas"></canvas>
+    </div>
+  </div>
+</section>
+
+<!-- ===== LOGOS ===== -->
+<section class="section" style="padding-top:1rem; padding-bottom:1rem;">
+  <div class="container is-max-desktop">
+    <div class="imagesrow">
+      <img src="./static/images/Carl-Zeiss-Stiftung_Logo.png" alt="Carl Zeiss Stiftung">
+      <img src="./static/images/ai_center_3.png" alt="Tübingen AI Center">
+      <img src="./static/images/Tuebingen_logo_scaled.png" alt="University of Tübingen">
+      <img src="./static/images/IMPRS-IS.png" alt="IMPRS-IS">
+      <img src="./static/images/mpi-logo-new.svg" alt="MPI" style="height:45px;">
+    </div>
+  </div>
+</section>
+
+<!-- ===== BIBTEX ===== -->
+<section class="section" id="BibTeX" data-nav-label="BibTeX">
+  <div class="container is-max-desktop">
+    <h2 class="title is-3 section-title">BibTeX</h2>
+    <div class="bibtex-wrap">
+      <button class="bibtex-copy" id="bibCopyBtn" title="Copy BibTeX">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="9" y="9" width="13" height="13" rx="2"/>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+        </svg>
+        <span id="bibCopyLabel">Copy</span>
+      </button>
+      <div class="bibtex-block" id="bibText">@misc{ym2026graft,
+  author       = {YM, Pradyumna and Xue, Yuxuan and Chen, Yue and Kister, Nikita and S{\'{a}}r{\'{a}}ndi, Istv{\'{a}}n and Pons-Moll, Gerard},
+  title        = {{GRAFT: Geometric Refinement and Fitting Transformer for Human Scene Reconstruction}},
+  year         = {2026},
+  howpublished = {\url{https://pradyumnaym.github.io/graft/}},
+}</div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer" style="padding:1rem 1.5rem;">
+  <div class="container">
+    <div class="content has-text-centered" style="font-size:0.78rem; color:#888;">
+      <p>This page was built using the <a href="https://nerfies.github.io" target="_blank">Nerfies</a> project page template.</p>
+    </div>
+  </div>
+</footer>
+
+<!-- ===== Section Nav JS ===== -->
+<script>
+(function () {
+  const desktopNav  = document.getElementById('page-nav');
+  const mobilePanel = document.getElementById('nav-mobile-panel');
+  const hamburger   = document.getElementById('nav-hamburger');
+  const overlay     = document.getElementById('nav-overlay');
+
+  // Auto-discover all sections tagged with data-nav-label
+  const sections = Array.from(document.querySelectorAll('section[data-nav-label]'));
+
+  function buildLinks(container, isMobile) {
+    sections.forEach(sec => {
+      const a = document.createElement('a');
+      a.href = '#' + sec.id;
+      a.dataset.target = sec.id;
+      if (!isMobile) {
+        const dot = document.createElement('span');
+        dot.className = 'pn-dot';
+        a.appendChild(dot);
+      }
+      const txt = document.createElement('span');
+      txt.textContent = sec.dataset.navLabel;
+      a.appendChild(txt);
+      a.addEventListener('click', e => {
+        e.preventDefault();
+        sec.scrollIntoView({ behavior: 'smooth' });
+        if (isMobile) closeMenu();
+      });
+      container.appendChild(a);
+    });
+  }
+
+  buildLinks(desktopNav, false);
+  buildLinks(mobilePanel, true);
+
+  const allLinks = [
+    ...desktopNav.querySelectorAll('a'),
+    ...mobilePanel.querySelectorAll('a')
+  ];
+
+  function setActive(id) {
+    allLinks.forEach(a => a.classList.toggle('active', a.dataset.target === id));
+  }
+
+  // Track active section with IntersectionObserver
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) setActive(e.target.id); });
+  }, { rootMargin: '-25% 0px -65% 0px', threshold: 0 });
+  sections.forEach(s => io.observe(s));
+
+  // Hamburger toggle
+  function openMenu()  { mobilePanel.classList.add('open'); overlay.classList.add('open'); hamburger.setAttribute('aria-expanded','true'); }
+  function closeMenu() { mobilePanel.classList.remove('open'); overlay.classList.remove('open'); hamburger.setAttribute('aria-expanded','false'); }
+  hamburger.addEventListener('click', () => mobilePanel.classList.contains('open') ? closeMenu() : openMenu());
+  overlay.addEventListener('click', closeMenu);
+})();
+</script>
+
+<!-- ===== Scripts ===== -->
+<script>
+  // BibTeX copy button
+  document.getElementById('bibCopyBtn').addEventListener('click', () => {
+    const text = document.getElementById('bibText').innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      const lbl = document.getElementById('bibCopyLabel');
+      const btn = document.getElementById('bibCopyBtn');
+      lbl.textContent = 'Copied!';
+      btn.style.background = 'rgba(166,227,161,0.18)';
+      btn.style.borderColor = 'rgba(166,227,161,0.5)';
+      setTimeout(() => { lbl.textContent = 'Copy'; btn.style.background = ''; btn.style.borderColor = ''; }, 2000);
+    });
+  });
+</script>
+
+<script type="module">
+  import * as THREE from 'three';
+  import { GLTFLoader }    from 'three/addons/loaders/GLTFLoader.js';
+  import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+  const SAMPLES = [20,36,37,42,44,50,53,54,55,57,58,60,61,66,67,68,69,73,75,77,80,83,
+                   85,86,88,91,98,100,104,105,109,111,113,116,117,121,127,128,129,130,
+                   131,134,148,227,232,233,309,327,386,432,448,454];
+  const SMPLX_VERTEX_COUNT   = 10475;
+  const AUTO_ROTATE_DURATION = 12;
+
+  // ── thumbnails ──────────────────────────────────────────────────────────────
+  const strip = document.getElementById('thumbStrip');
+  SAMPLES.forEach((id, idx) => {
+    const div = document.createElement('div');
+    div.className = 'thumb-item' + (idx === 0 ? ' active' : '');
+    div.innerHTML = `<img src="./static/interactive_results/${id}.jpg" alt="sample" loading="lazy">`;
+    div.addEventListener('click', () => goTo(idx));
+    strip.appendChild(div);
+  });
+  const thumbItems = Array.from(strip.querySelectorAll('.thumb-item'));
+
+  // ── THREE setup ─────────────────────────────────────────────────────────────
+  const canvas     = document.getElementById('canvasOurs');
+  const loadingDiv = document.getElementById('canvasLoading');
+  const cue        = document.getElementById('rotateCue');
+  const counter    = document.getElementById('navCounter');
+
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.3;
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xffffff);
+
+  const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+  camera.position.set(0, 1, 2);
+
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.05;
+
+  scene.add(new THREE.AmbientLight(0xffffff, 1.5));
+  const dKey = new THREE.DirectionalLight(0xffffff, 2.5);
+  dKey.position.set(7, 12, 9);
+  scene.add(dKey);
+  const dFill = new THREE.DirectionalLight(0xffffff, 1.2);
+  dFill.position.set(-7, 5, -7);
+  scene.add(dFill);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xddddff, 0.8));
+
+  let autoRotating    = false;
+  let autoRotStart    = 0;
+  let initialCamOffset = null;
+  let userInteracting = false;
+  let hasInteracted   = false;
+
+  controls.addEventListener('start', () => {
+    if (!hasInteracted) { hasInteracted = true; cue.classList.add('hidden'); }
+    userInteracting = true;
+    autoRotating = false;
+  });
+  controls.addEventListener('end', () => {
+    userInteracting = false;
+    initialCamOffset = camera.position.clone().sub(controls.target);
+    autoRotStart = performance.now();
+    autoRotating = true;
+  });
+
+  function resize() {
+    const w = canvas.parentElement.clientWidth || 800;
+    const h = 520;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', resize);
+
+  function animate() {
+    requestAnimationFrame(animate);
+    controls.update();
+    if (autoRotating && !userInteracting && initialCamOffset) {
+      const elapsed = (performance.now() - autoRotStart) / 1000;
+      const angleRad = (25 * Math.PI / 180) * (1 - Math.cos(2 * Math.PI * elapsed / AUTO_ROTATE_DURATION));
+      const off = initialCamOffset;
+      const cosA = Math.cos(angleRad), sinA = Math.sin(angleRad);
+      camera.position.set(
+        controls.target.x + off.x * cosA - off.z * sinA,
+        controls.target.y + off.y,
+        controls.target.z + off.x * sinA + off.z * cosA
+      );
+      camera.lookAt(controls.target);
+    }
+    renderer.render(scene, camera);
+  }
+
+  const loader = new GLTFLoader();
+  let currentModel = null;
+
+  function disposeModel(obj) {
+    obj.traverse(c => {
+      if (!c.isMesh) return;
+      c.geometry.dispose();
+      [].concat(c.material).forEach(m => {
+        if (!m) return;
+        Object.values(m).forEach(v => { if (v && v.isTexture) v.dispose(); });
+        m.dispose();
+      });
+    });
+  }
+
+  let loadVersion = 0;
+
+  function loadGlb(sampleId) {
+    loadVersion++;
+    const myVersion = loadVersion;
+    loadingDiv.textContent = 'Loading\u2026';
+    loadingDiv.style.display = 'block';
+
+    loader.load(
+      `./static/interactive_results/${sampleId}.glb`,
+      (gltf) => {
+        if (myVersion !== loadVersion) return;
+        loadingDiv.style.display = 'none';
+
+        if (currentModel) { disposeModel(currentModel); scene.remove(currentModel); currentModel = null; }
+
+        const model = gltf.scene;
+        model.rotation.x = Math.PI;
+
+        model.traverse(c => {
+          if (c.isMesh && c.material) {
+            c.material.side = THREE.DoubleSide;
+            c.material.transparent = false;
+            c.material.opacity = 1.0;
+            if (c.geometry.attributes.color) {
+              c.material.vertexColors = true;
+              c.material.color.set(0xffffff);
+            }
+            c.material.needsUpdate = true;
+          }
+        });
+
+        const box = new THREE.Box3().setFromObject(model);
+        const center = box.getCenter(new THREE.Vector3());
+        const size   = box.getSize(new THREE.Vector3());
+        model.position.set(-center.x, -center.y, -center.z);
+        scene.add(model);
+        currentModel = model;
+        model.updateMatrixWorld(true);
+
+        const humanMeshes = [];
+        model.traverse(c => {
+          if (c.isMesh && c.geometry && c.geometry.attributes.position &&
+              c.geometry.attributes.position.count === SMPLX_VERTEX_COUNT) {
+            humanMeshes.push(c);
+          }
+        });
+
+        const fov = camera.fov * (Math.PI / 180);
+        const targetCenter = new THREE.Vector3(0, 0, 0);
+        let cameraZ;
+
+        if (humanMeshes.length > 0) {
+          const humanBox = new THREE.Box3();
+          humanMeshes.forEach(m => humanBox.expandByObject(m));
+          humanBox.getCenter(targetCenter);
+          const hSize = humanBox.getSize(new THREE.Vector3());
+          const hMax  = Math.max(hSize.x, hSize.y, hSize.z);
+          cameraZ = Math.abs(hMax / 2 / Math.tan(fov / 2)) * 2.2;
+        } else {
+          const maxDim = Math.max(size.x, size.y, size.z);
+          cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2)) * 1.2;
+        }
+
+        camera.position.set(targetCenter.x, targetCenter.y + cameraZ * 0.15, targetCenter.z + cameraZ);
+        camera.lookAt(targetCenter);
+        controls.target.copy(targetCenter);
+        controls.update();
+
+        initialCamOffset = camera.position.clone().sub(controls.target);
+        autoRotStart = performance.now();
+        userInteracting = false;
+        autoRotating = true;
+      },
+      undefined,
+      (err) => {
+        loadingDiv.textContent = 'Error loading model';
+        console.error('GLB error:', err);
+      }
+    );
+  }
+
+  let current = 0;
+
+  function goTo(idx) {
+    idx = ((idx % SAMPLES.length) + SAMPLES.length) % SAMPLES.length;
+    thumbItems[current].classList.remove('active');
+    current = idx;
+    thumbItems[current].classList.add('active');
+    strip.scrollTo({ left: thumbItems[current].offsetLeft - strip.clientWidth / 2 + thumbItems[current].clientWidth / 2, behavior: 'smooth' });
+    counter.textContent = `${current + 1} / ${SAMPLES.length}`;
+    cue.classList.remove('hidden');
+    hasInteracted = false;
+    loadGlb(SAMPLES[current]);
+  }
+
+  document.getElementById('prevBtn').addEventListener('click', () => goTo(current - 1));
+  document.getElementById('nextBtn').addEventListener('click', () => goTo(current + 1));
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft')  goTo(current - 1);
+    if (e.key === 'ArrowRight') goTo(current + 1);
+  });
+
+  requestAnimationFrame(() => {
+    resize();
+    animate();
+    goTo(0);
+  });
+</script>
+
+</body>
+</html>

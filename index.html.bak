@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="description"
+        content="GRAFT: Geometric Refinement and Fitting Transformer for Human Scene Reconstruction.">
+  <meta name="keywords" content="GRAFT, human scene reconstruction, 3D reconstruction, project page">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GRAFT: Geometric Refinement and Fitting Transformer for Human Scene Reconstruction</title>
+
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro" rel="stylesheet">
+  <link rel="stylesheet" href="./static/css/bulma.min.css">
+  <link rel="stylesheet" href="./static/css/fontawesome.all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  <link rel="stylesheet" href="./static/css/index.css">
+  <link rel="icon" type="image/png" href="./static/images/graft.png">
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.158.0/examples/jsm/"
+      }
+    }
+  </script>
+  <script defer src="./static/js/fontawesome.all.min.js"></script>
+
+  <style>
+    .hero-body { padding-top: 2.5rem; padding-bottom: 1.5rem; }
+
+    .title-logo {
+      width: 56px; height: 56px; object-fit: contain;
+      vertical-align: middle; margin-right: 0.35rem; margin-bottom: 0.15rem;
+    }
+
+    .author-row, .meta-row {
+      display: flex; justify-content: center; flex-wrap: wrap;
+      gap: 0.5rem 1rem; margin-top: 1rem;
+    }
+    .author-row span, .meta-row span { white-space: nowrap; }
+
+    .hero-buttons {
+      margin-top: 1.5rem; display: flex; justify-content: center;
+      gap: 0.75rem; flex-wrap: wrap;
+    }
+
+    .video-card {
+      background: #fff; border-radius: 14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08); overflow: hidden;
+    }
+    .video-frame { background: #000; display: flex; justify-content: center; align-items: center; }
+    .video-frame video { width: 100%; height: auto; max-height: 72vh; display: block; object-fit: contain; }
+
+    /* thumb strip */
+    .thumb-strip {
+      display: flex; gap: 0.55rem; overflow-x: auto;
+      padding: 0.5rem 0 0.75rem; scrollbar-width: thin;
+    }
+    .thumb-item {
+      flex-shrink: 0; cursor: pointer; border-radius: 8px; overflow: hidden;
+      border: 3px solid transparent; transition: border-color .2s, transform .15s;
+    }
+    .thumb-item:hover { transform: scale(1.04); }
+    .thumb-item.active { border-color: #3273dc; }
+    .thumb-item img { width: 90px; height: 90px; object-fit: cover; display: block; }
+    /* nav */
+    .nav-arrows {
+      display: flex; align-items: center; justify-content: center;
+      gap: 1rem; margin: 0.6rem 0 0.8rem;
+    }
+    .nav-arrows button {
+      background: #fff;
+      border: 1.5px solid #ddd;
+      border-radius: 50%;
+      width: 2.4rem; height: 2.4rem;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      padding: 0;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+      transition: background .15s, box-shadow .15s, border-color .15s;
+      flex-shrink: 0;
+    }
+    .nav-arrows button:hover {
+      background: #3273dc;
+      border-color: #3273dc;
+      box-shadow: 0 3px 10px rgba(50,115,220,0.35);
+    }
+    .nav-arrows button:hover svg { stroke: #fff; }
+    .nav-arrows button svg { stroke: #555; transition: stroke .15s; }
+    .nav-counter { font-size: 0.85rem; color: #555; min-width: 4rem; text-align: center; }
+
+    /* viewer card */
+    .viewer-card {
+      background: #fff; border-radius: 14px;
+      box-shadow: 0 6px 22px rgba(0,0,0,0.09); overflow: hidden; position: relative;
+    }
+    .card-label {
+      position: absolute; top: 10px; left: 14px; z-index: 5;
+      background: rgba(0,0,0,0.55); color: #fff; font-size: 0.78rem;
+      padding: 2px 9px; border-radius: 10px; pointer-events: none;
+    }
+    .card-canvas { display: block; width: 100%; height: 520px; }
+    .rotate-cue {
+      position: absolute; bottom: 10px; right: 14px; z-index: 5;
+      background: rgba(0,0,0,0.45); color: #fff; font-size: 0.72rem;
+      padding: 3px 9px; border-radius: 10px; pointer-events: none;
+      opacity: 1; transition: opacity 1s;
+    }
+    .rotate-cue.hidden { opacity: 0; }
+    .canvas-loading {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      color: #888; font-size: 0.9rem; pointer-events: none; z-index: 10;
+    }
+
+    /* logos */
+    .imagesrow {
+      display: flex; flex-wrap: wrap; justify-content: center;
+      align-items: center; gap: 1.5rem 2.5rem; margin-top: 1.5rem;
+    }
+    .imagesrow img { height: 40px; width: auto; }
+
+    .bibtex-wrap {
+      position: relative;
+      margin-top: 0.75rem;
+    }
+    .bibtex-block {
+      background: #1e1e2e;
+      color: #cdd6f4;
+      border-radius: 10px;
+      padding: 1.2rem 1.4rem;
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+      font-size: 0.82rem;
+      line-height: 1.6;
+      overflow-x: auto;
+      white-space: pre;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .bibtex-copy {
+      position: absolute;
+      top: 0.55rem;
+      right: 0.65rem;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 7px;
+      color: #cdd6f4;
+      cursor: pointer;
+      padding: 0.28rem 0.6rem;
+      font-size: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      transition: background .15s;
+      line-height: 1;
+    }
+    .bibtex-copy:hover { background: rgba(255,255,255,0.18); }
+    .bibtex-copy svg { width: 14px; height: 14px; flex-shrink: 0; }
+    pre { white-space: pre-wrap; word-break: break-word; }
+  </style>
+</head>
+<body>
+
+<!-- ===== HERO ===== -->
+<section class="hero">
+  <div class="hero-body">
+    <div class="container is-max-desktop">
+      <div class="columns is-centered">
+        <div class="column has-text-centered">
+
+          <h1 class="title is-2 publication-title" style="margin:0; text-align:center;">
+            <img class="title-logo" src="./static/images/graft_wobg.png" alt="GRAFT logo">GRAFT: Geometric Refinement and Fitting Transformer for Human Scene Reconstruction
+          </h1>
+
+          <div class="is-size-5 publication-authors author-row" style="margin-top:1.2rem;">
+            <span><a href="https://pradyumnaym.github.io/" target="_blank">Pradyumna&nbsp;YM</a><sup>1,2</sup></span>
+            <span><a href="https://yuxuan-xue.com/" target="_blank">Yuxuan&nbsp;Xue</a><sup>1,2,&dagger;</sup></span>
+            <span><a href="https://fanegg.github.io/" target="_blank">Yue&nbsp;Chen</a><sup>3</sup></span>
+            <span><a href="https://virtualhumans.mpi-inf.mpg.de/people/Kister.html" target="_blank">Nikita&nbsp;Kister</a><sup>1,2</sup></span>
+            <span><a href="https://istvansarandi.com/" target="_blank">Istv&#225;n&nbsp;S&#225;r&#225;ndi</a><sup>1,2</sup></span>
+            <span><a href="https://virtualhumans.mpi-inf.mpg.de/people/pons-moll.html" target="_blank">Gerard&nbsp;Pons-Moll</a><sup>1,2,4</sup></span>
+          </div>
+
+          <div class="is-size-6" style="color:#555; margin-top:0.5rem; text-align:center; line-height:1.8;">
+            <sup>1</sup>University of T&uuml;bingen&ensp;
+            <sup>2</sup>T&uuml;bingen AI Center&ensp;
+            <sup>3</sup>Westlake University&ensp;
+            <sup>4</sup>Max Planck Institute for Informatics<br>
+            <sup>&dagger;</sup>Corresponding author
+          </div>
+
+          <div class="is-size-6 meta-row" style="color:#666; margin-top:0.4rem;">
+            <span>2026</span>
+          </div>
+
+          <div class="hero-buttons">
+            <a href="#BibTeX" class="button is-normal is-rounded is-light">
+              <span class="icon"><i class="fas fa-quote-right"></i></span>
+              <span>BibTeX</span>
+            </a>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== VIDEO ===== -->
+<section class="section" style="padding-top:0.25rem; padding-bottom:1.5rem;">
+  <div class="container" style="max-width:1100px;">
+    <div class="video-card">
+      <div class="video-frame">
+        <video id="suppVideo" controls autoplay muted loop preload="metadata" playsinline
+               poster="./static/images/graft_suppl_poster.jpg">
+          <source src="./static/videos/graft_suppl.mp4" type="video/mp4">
+        </video>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== INTERACTIVE RESULTS ===== -->
+<section class="section" style="padding-top:1rem;">
+  <div class="container" style="max-width:1300px;">
+    <div class="has-text-centered" style="margin-bottom:1.1rem;">
+      <h2 class="title is-3">Interactive Qualitative Results</h2>
+      <p class="subtitle is-6" style="margin-top:0.3rem;">
+        Select an image to inspect the corresponding GRAFT reconstruction.
+        Drag to rotate &middot; scroll to zoom.
+      </p>
+    </div>
+
+    <div id="thumbStrip" class="thumb-strip"></div>
+
+    <div class="nav-arrows">
+      <button id="prevBtn" title="Previous">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <span id="navCounter" class="nav-counter">1 / 50</span>
+      <button id="nextBtn" title="Next">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+    </div>
+
+    <div class="viewer-card" style="margin-top:0.4rem;">
+      <div class="card-label">Ours</div>
+      <div id="rotateCue" class="rotate-cue">&#8635; drag to rotate</div>
+      <div id="canvasLoading" class="canvas-loading">Loading&hellip;</div>
+      <canvas id="canvasOurs" class="card-canvas"></canvas>
+    </div>
+  </div>
+</section>
+
+<!-- ===== LOGOS ===== -->
+<section class="section" style="padding-top:1rem; padding-bottom:1rem;">
+  <div class="container is-max-desktop">
+    <div class="imagesrow">
+      <img src="./static/images/Carl-Zeiss-Stiftung_Logo.png" alt="Carl Zeiss Stiftung">
+      <img src="./static/images/ai_center_3.png" alt="Tübingen AI Center">
+      <img src="./static/images/Tuebingen_logo_scaled.png" alt="University of Tübingen">
+      <img src="./static/images/IMPRS-IS.png" alt="IMPRS-IS">
+      <img src="./static/images/mpi-logo-new.svg" alt="MPI" style="height:45px;">
+    </div>
+  </div>
+</section>
+
+<!-- ===== BIBTEX ===== -->
+<section class="section" id="BibTeX">
+  <div class="container is-max-desktop">
+    <h2 class="title is-3">BibTeX</h2>
+    <div class="bibtex-wrap">
+      <button class="bibtex-copy" id="bibCopyBtn" title="Copy BibTeX">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="9" y="9" width="13" height="13" rx="2"/>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+        </svg>
+        <span id="bibCopyLabel">Copy</span>
+      </button>
+      <div class="bibtex-block" id="bibText">@misc{ymgraft2026,
+  author       = {YM, Pradyumna and Xue, Yuxuan and Chen, Yue and Kister, Nikita and S{\'{a}}r{\'{a}}ndi, Istv{\'{a}}n and Pons-Moll, Gerard},
+  title        = {{GRAFT: Geometric Refinement and Fitting Transformer for Human Scene Reconstruction}},
+  year         = {2026},
+  howpublished = {\url{https://pradyumnaym.github.io/graft/}},
+}</div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer" style="padding:1rem 1.5rem;">
+  <div class="container">
+    <div class="content has-text-centered" style="font-size:0.78rem; color:#888;">
+      <p>This page was built using the <a href="https://nerfies.github.io" target="_blank">Nerfies</a> project page template.</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+  document.getElementById('suppVideo').addEventListener('play', function() {
+    this.removeAttribute('poster');
+  }, { once: true });
+
+  // BibTeX copy button
+  document.getElementById('bibCopyBtn').addEventListener('click', () => {
+    const text = document.getElementById('bibText').innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      const lbl = document.getElementById('bibCopyLabel');
+      const btn = document.getElementById('bibCopyBtn');
+      lbl.textContent = 'Copied!';
+      btn.style.background = 'rgba(166,227,161,0.18)';
+      btn.style.borderColor = 'rgba(166,227,161,0.5)';
+      setTimeout(() => { lbl.textContent = 'Copy'; btn.style.background = ''; btn.style.borderColor = ''; }, 2000);
+    });
+  });
+</script>
+
+<script type="module">
+  import * as THREE from 'three';
+  import { GLTFLoader }    from 'three/addons/loaders/GLTFLoader.js';
+  import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+  const SAMPLES = [20,36,37,42,44,50,53,54,55,57,58,60,61,66,67,68,69,73,75,77,80,83,
+                   85,86,88,91,98,100,104,105,109,111,113,116,117,121,127,128,129,130,
+                   131,134,148,227,232,233,309,327,386,432,448,454];
+  const SMPLX_VERTEX_COUNT   = 10475;
+  const AUTO_ROTATE_DURATION = 12; // seconds per oscillation cycle
+
+  // ── thumbnails ──────────────────────────────────────────────────────────────
+  const strip = document.getElementById('thumbStrip');
+  SAMPLES.forEach((id, idx) => {
+    const div = document.createElement('div');
+    div.className = 'thumb-item' + (idx === 0 ? ' active' : '');
+    div.innerHTML = `<img src="./static/interactive_results/${id}.jpg" alt="sample" loading="lazy">`;
+    div.addEventListener('click', () => goTo(idx));
+    strip.appendChild(div);
+  });
+  const thumbItems = Array.from(strip.querySelectorAll('.thumb-item'));
+
+  // ── THREE setup ─────────────────────────────────────────────────────────────
+  const canvas     = document.getElementById('canvasOurs');
+  const loadingDiv = document.getElementById('canvasLoading');
+  const cue        = document.getElementById('rotateCue');
+  const counter    = document.getElementById('navCounter');
+
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.3;
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xffffff);
+
+  const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 1000);
+  camera.position.set(0, 1, 2);
+
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.05;
+
+  // lighting (same as reference)
+  scene.add(new THREE.AmbientLight(0xffffff, 1.5));
+  const dKey = new THREE.DirectionalLight(0xffffff, 2.5);
+  dKey.position.set(7, 12, 9);
+  scene.add(dKey);
+  const dFill = new THREE.DirectionalLight(0xffffff, 1.2);
+  dFill.position.set(-7, 5, -7);
+  scene.add(dFill);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xddddff, 0.8));
+
+  // auto-rotation state
+  let autoRotating    = false;
+  let autoRotStart    = 0;
+  let initialCamOffset = null;
+  let userInteracting = false;
+  let hasInteracted   = false;
+
+  controls.addEventListener('start', () => {
+    if (!hasInteracted) { hasInteracted = true; cue.classList.add('hidden'); }
+    userInteracting = true;
+    autoRotating = false;
+  });
+  controls.addEventListener('end', () => {
+    userInteracting = false;
+    initialCamOffset = camera.position.clone().sub(controls.target);
+    autoRotStart = performance.now();
+    autoRotating = true;
+  });
+
+  // ── resize ──────────────────────────────────────────────────────────────────
+  function resize() {
+    const w = canvas.parentElement.clientWidth || 800;
+    const h = 520;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', resize);
+
+  // ── render loop ─────────────────────────────────────────────────────────────
+  function animate() {
+    requestAnimationFrame(animate);
+    controls.update();
+    if (autoRotating && !userInteracting && initialCamOffset) {
+      const elapsed = (performance.now() - autoRotStart) / 1000;
+      const angleRad = (25 * Math.PI / 180) * (1 - Math.cos(2 * Math.PI * elapsed / AUTO_ROTATE_DURATION));
+      const off = initialCamOffset;
+      const cosA = Math.cos(angleRad), sinA = Math.sin(angleRad);
+      camera.position.set(
+        controls.target.x + off.x * cosA - off.z * sinA,
+        controls.target.y + off.y,
+        controls.target.z + off.x * sinA + off.z * cosA
+      );
+      camera.lookAt(controls.target);
+    }
+    renderer.render(scene, camera);
+  }
+
+  // ── GLB loader ──────────────────────────────────────────────────────────────
+  const loader = new GLTFLoader();
+  let currentModel = null;
+
+  function disposeModel(obj) {
+    obj.traverse(c => {
+      if (!c.isMesh) return;
+      c.geometry.dispose();
+      [].concat(c.material).forEach(m => {
+        if (!m) return;
+        Object.values(m).forEach(v => { if (v && v.isTexture) v.dispose(); });
+        m.dispose();
+      });
+    });
+  }
+
+  let loadVersion = 0;
+
+  function loadGlb(sampleId) {
+    loadVersion++;
+    const myVersion = loadVersion;
+    loadingDiv.textContent = 'Loading\u2026';
+    loadingDiv.style.display = 'block';
+
+    loader.load(
+      `./static/interactive_results/${sampleId}.glb`,
+      (gltf) => {
+        if (myVersion !== loadVersion) return; // superseded
+        loadingDiv.style.display = 'none';
+
+        if (currentModel) { disposeModel(currentModel); scene.remove(currentModel); currentModel = null; }
+
+        const model = gltf.scene;
+        // Flip to correct orientation (same as reference)
+        model.rotation.x = Math.PI;
+
+        model.traverse(c => {
+          if (c.isMesh && c.material) {
+            c.material.side = THREE.DoubleSide;
+            c.material.transparent = false;
+            c.material.opacity = 1.0;
+            if (c.geometry.attributes.color) {
+              c.material.vertexColors = true;
+              c.material.color.set(0xffffff);
+            }
+            c.material.needsUpdate = true;
+          }
+        });
+
+        // Center model at origin
+        const box = new THREE.Box3().setFromObject(model);
+        const center = box.getCenter(new THREE.Vector3());
+        const size   = box.getSize(new THREE.Vector3());
+        model.position.set(-center.x, -center.y, -center.z);
+        scene.add(model);
+        currentModel = model;
+        model.updateMatrixWorld(true);
+
+        // Camera framing: focus on SMPLX human meshes if present
+        const humanMeshes = [];
+        model.traverse(c => {
+          if (c.isMesh && c.geometry && c.geometry.attributes.position &&
+              c.geometry.attributes.position.count === SMPLX_VERTEX_COUNT) {
+            humanMeshes.push(c);
+          }
+        });
+
+        const fov = camera.fov * (Math.PI / 180);
+        const targetCenter = new THREE.Vector3(0, 0, 0);
+        let cameraZ;
+
+        if (humanMeshes.length > 0) {
+          const humanBox = new THREE.Box3();
+          humanMeshes.forEach(m => humanBox.expandByObject(m));
+          humanBox.getCenter(targetCenter);
+          const hSize = humanBox.getSize(new THREE.Vector3());
+          const hMax  = Math.max(hSize.x, hSize.y, hSize.z);
+          cameraZ = Math.abs(hMax / 2 / Math.tan(fov / 2)) * 2.2;
+        } else {
+          const maxDim = Math.max(size.x, size.y, size.z);
+          cameraZ = Math.abs(maxDim / 2 / Math.tan(fov / 2)) * 1.2;
+        }
+
+        camera.position.set(targetCenter.x, targetCenter.y + cameraZ * 0.15, targetCenter.z + cameraZ);
+        camera.lookAt(targetCenter);
+        controls.target.copy(targetCenter);
+        controls.update();
+
+        // Start oscillating auto-rotation
+        initialCamOffset = camera.position.clone().sub(controls.target);
+        autoRotStart = performance.now();
+        userInteracting = false;
+        autoRotating = true;
+      },
+      undefined,
+      (err) => {
+        loadingDiv.textContent = 'Error loading model';
+        console.error('GLB error:', err);
+      }
+    );
+  }
+
+  // ── navigation ──────────────────────────────────────────────────────────────
+  let current = 0;
+
+  function goTo(idx) {
+    idx = ((idx % SAMPLES.length) + SAMPLES.length) % SAMPLES.length;
+    thumbItems[current].classList.remove('active');
+    current = idx;
+    thumbItems[current].classList.add('active');
+    thumbItems[current].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    counter.textContent = `${current + 1} / ${SAMPLES.length}`;
+    cue.classList.remove('hidden');
+    hasInteracted = false;
+    loadGlb(SAMPLES[current]);
+  }
+
+  document.getElementById('prevBtn').addEventListener('click', () => goTo(current - 1));
+  document.getElementById('nextBtn').addEventListener('click', () => goTo(current + 1));
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft')  goTo(current - 1);
+    if (e.key === 'ArrowRight') goTo(current + 1);
+  });
+
+  // ── init ────────────────────────────────────────────────────────────────────
+  requestAnimationFrame(() => {
+    resize();
+    animate();
+    goTo(0);
+  });
+</script>
+
+</body>
+</html>
