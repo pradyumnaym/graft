@@ -16,7 +16,7 @@
 <p>
   <a href="https://pradyumnaym.github.io/graft/"><img alt="Project Page" src="https://img.shields.io/badge/Project%20Page-graft-blue?style=flat&logo=googlechrome"></a>
   <a href="#"><img alt="Paper PDF" src="https://img.shields.io/badge/Paper-PDF-red?style=flat&logo=adobeacrobatreader"></a>
-  <a href="#"><img alt="arXiv" src="https://img.shields.io/badge/arXiv-coming%20soon-b31b1b?style=flat&logo=arxiv"></a>
+  <a href="https://arxiv.org/abs/2604.19624"><img alt="arXiv" src="https://img.shields.io/badge/arXiv-2604.19624-b31b1b?style=flat&logo=arxiv"></a>
   <a href="#"><img alt="Code" src="https://img.shields.io/badge/Code-coming%20soon-333?style=flat&logo=github"></a>
 </p>
 
@@ -29,7 +29,7 @@ assets/graft_suppl.mp4
 ## Roadmap
 
 - [x] Project page
-- [ ] arXiv paper
+- [x] arXiv paper
 - [ ] Demo release
 - [ ] Code release
 
@@ -39,10 +39,12 @@ If you find our work useful, please consider citing:
 
 ```bibtex
 @misc{ym2026graft,
-  author       = {YM, Pradyumna and Xue, Yuxuan and Chen, Yue and Kister, Nikita and S{\'a}r{\'a}ndi, Istv{\'a}n and Pons-Moll, Gerard},
-  title        = {{GRAFT: Geometric Refinement and Fitting Transformer for Human Scene Reconstruction}},
+  title        = {GRAFT: Geometric Refinement and Fitting Transformer for Human Scene Reconstruction},
+  author       = {Pradyumna YM and Yuxuan Xue and Yue Chen and Nikita Kister and Istv{\'a}n S{\'a}r{\'a}ndi and Gerard Pons-Moll},
   year         = {2026},
-  howpublished = {\url{https://pradyumnaym.github.io/graft/}},
+  eprint       = {2604.19624},
+  archivePrefix = {arXiv},
+  url          = {https://arxiv.org/abs/2604.19624},
 }
 ```
 
