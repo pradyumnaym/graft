@@ -24,7 +24,11 @@
 
 **TL;DR** — A learned HSI prior that predicts iterative geometry-grounded refinements to reconstruct humans in scenes from a single image. Matches optimization-based contact quality at **~50× lower runtime**; as a plug-and-play prior it boosts existing methods by up to **44%** contact F1 — no retraining needed.
 
-assets/graft_suppl.mp4
+
+
+https://github.com/user-attachments/assets/0ce2b017-afa6-49c5-a016-d007e1ef7a93
+
+
 
 ## Roadmap
 
