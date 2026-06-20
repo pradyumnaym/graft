@@ -344,6 +344,20 @@
     @media (min-width: 1281px) {
       #nav-hamburger, #nav-mobile-panel, #nav-overlay { display: none !important; }
     }
+
+    /* ===== ECCV 2026 (Malmö) venue badge ===== */
+    .eccv-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.25rem 0.85rem;
+      border-radius: 999px;
+      background: rgba(0,106,167,0.08);
+      border: 1px solid rgba(0,106,167,0.22);
+      color: #1d3a52;
+      font-weight: 600;
+    }
+    .eccv-badge strong { color: #006AA7; }
   </style>
 </head>
 <body>
@@ -386,8 +400,8 @@
             <sup>&dagger;</sup>Corresponding author
           </div>
 
-          <div class="is-size-6 meta-row" style="color:#666; margin-top:0.4rem;">
-            <span>2026</span>
+          <div class="is-size-6 meta-row" style="margin-top:0.7rem;">
+            <span class="eccv-badge"><strong>ECCV 2026</strong></span>
           </div>
 
           <div class="hero-buttons">
