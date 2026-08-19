@@ -34,8 +34,8 @@ https://github.com/user-attachments/assets/0ce2b017-afa6-49c5-a016-d007e1ef7a93
 
 - [x] Project page
 - [x] arXiv paper
-- [ ] Demo release
-- [ ] Code release
+- [ ] Demo/Inference Code release (ETA: By ECCV)
+- [ ] Evaluation/Training Code release (ETA: By November)
 
 ## BibTeX
 
