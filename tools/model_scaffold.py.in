@@ -31,7 +31,7 @@ class GRAFTConfig:
     #: ``'scale'`` (published) rescales the body about the camera;
     #: ``'transl'`` only shifts it.
     alignment_type: str = "scale"
-    #: Blind the model to image features (the "without visual features" ablation).
+    #: Blind the model to image features (geometry-only mode).
     #: Sample points are pushed out of bounds, so the transformer sees geometry only.
     drop_vis_feats: bool = False
     #: SMPL-X hand-mean convention the checkpoint was trained under. This must

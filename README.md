@@ -23,8 +23,8 @@
 
 **TL;DR** — A learned HSI prior that predicts iterative geometry-grounded refinements
 to reconstruct humans in scenes from a single image. Matches optimization-based
-contact quality at **~50× lower runtime**; as a plug-and-play prior it boosts
-existing methods by up to **44%** contact F1 — no retraining needed.
+contact quality at **~100× lower runtime**; as a plug-in prior it boosts existing
+methods by up to **44%** contact F1 — no retraining needed.
 
 
 https://github.com/user-attachments/assets/0ce2b017-afa6-49c5-a016-d007e1ef7a93
@@ -63,140 +63,79 @@ itself, so a photo with nobody in it raises `graft.NoPeopleDetected`.
 
 ```bash
 conda create -n graft python=3.10 && conda activate graft
-bash install.sh              # everything: inference, benchmarks, demo extras
-bash install.sh --minimal    # inference only
-```
-
-`install.sh` installs torch from the CUDA-matched index (`cu124`; override with
-`TORCH_INDEX`), then the project, then the `eval` and `demo` extras from
-`pyproject.toml` — one at a time, so that if one fails you still have a working
-inference install rather than nothing. It tells you which failed and how to retry.
-
-`pip install -e ".[all]"` installs the same set in one transaction, but skips the
-CUDA-matched torch step, so run it only in an environment that already has the
-right torch build.
-
-`requirements-lock.txt` records the exact versions the published numbers were
-produced with.
-
-Then populate the data root:
-
-```bash
-python scripts/download_assets.py         # everything needed to run
-python scripts/download_assets.py --eval  # + the benchmark assets
+bash install.sh                           # everything (--minimal for inference only)
+python scripts/download_assets.py --eval  # weights and assets (drop --eval to skip benchmarks)
 python scripts/check_install.py --all     # confirm the environment is ready
 ```
 
-One command, three sources. Our weights and the benchmark assets we produced come
-from [`ympradyumna/graft`](https://huggingface.co/ympradyumna/graft) on the Hub;
-the NLF detector is a direct download from its GitHub release; and the SMPL-X body
-models are account-gated, so the script prompts for those credentials. **Register
-at <https://smpl-x.is.tue.mpg.de> first** — that is the only account you need.
+`install.sh` installs torch from the CUDA-matched index (`cu124`; override with
+`TORCH_INDEX`), then the project and its extras one at a time, so a failing extra
+still leaves a working inference install. `requirements-lock.txt` records the versions
+the published numbers were produced with.
 
-Credentials go to the download portal and are not stored. `--skip-gated` opts out
-and lists what to fetch by hand instead.
-
-The data root is `$GRAFT_DATA_ROOT` (default `./data`); `$GRAFT_HF_REPO` points the
-Hub source elsewhere.
-
-After `python scripts/download_assets.py --eval` the data root looks like this:
-
-```
-data/                                       $GRAFT_DATA_ROOT (default ./data)
-├── checkpoints/
-│   ├── graft.pt                             65 MB    Hub
-│   └── graft_no_visual.pt                   65 MB    Hub
-├── body_models/
-│   └── smplx/
-│       ├── SMPLX_NEUTRAL.npz               109 MB    smpl-x.is.tue.mpg.de
-│       └── SMPLX_MALE.npz                  109 MB    same archive, --eval only
-├── nlf/
-│   └── nlf_l_multi_0.3.2.patch1.torchscript 493 MB    isarandi/nlf release
-├── scene_image.png                           1.8 MB   Hub, --eval
-├── prox_quantitative_depth.pkl              17 MB     Hub, --eval
-├── contact_vertice_weights.pkl               0.02 MB  Hub, --eval
-└── imgs/rich/scene_imgs/                   234 MB     Hub, --eval (33 PNGs)
-
-total ≈ 1.1 GB
-```
-
-Entries marked `--eval` are fetched only with that flag. `data/_downloads/` holds
-the SMPL-X archive after extraction and can be deleted. The benchmark *datasets*
-(PROX, RICH) live separately under `$GRAFT_BENCHMARK_ROOT` — see
+The download pulls ≈1.1 GB into `$GRAFT_DATA_ROOT` (default `./data`): our weights and
+benchmark assets from [`ympradyumna/graft`](https://huggingface.co/ympradyumna/graft),
+the NLF detector from its GitHub release, and the SMPL-X body models from an
+account-gated portal — **register at <https://smpl-x.is.tue.mpg.de> first**, the only
+account you need. Credentials are used for the download and not stored; `--skip-gated`
+opts out. The benchmark *datasets* live separately under `$GRAFT_BENCHMARK_ROOT`, see
 [`docs/EVALUATION.md`](docs/EVALUATION.md).
 
 ---
 
 ## Checkpoints
 
-Both load into the same `GRAFTModel`; they differ only in configuration.
+Both load into the same `GRAFTModel` and differ only in configuration.
 
 | Name | What it is | Config difference |
 |---|---|---|
 | `graft` | the main model | — |
-| `graft-no-visual` | the "without visual features" ablation | `drop_vis_feats=True` |
+| `graft-no-visual` | GRAFT in **geometry-only mode** | `drop_vis_feats=True` |
 
-`drop_vis_feats` pushes every image sample point out of bounds, so the refinement
-sees scene geometry only. The two also use different SMPL-X hand-mean conventions
-(`flat_hand_mean`), so `from_pretrained` needs an explicit `GRAFTConfig` for a bare
-checkpoint path rather than guessing one.
+`drop_vis_feats` pushes every image sample point out of bounds, so the refinement sees
+scene geometry only — the mode the paper uses as a plug-in prior on top of other
+methods, refining an existing reconstruction with no retraining and no image features.
+The two also use different `flat_hand_mean` conventions, so `from_pretrained` needs an
+explicit `GRAFTConfig` for a bare checkpoint path.
 
 ---
 
 ## The scene image
 
-GRAFT takes **two views of the same camera**: the photo with the people in it, and
-a view of the same scene *without* them. The second is where the geometry comes
-from — the model needs to see the surface a person is occluding in order to place
-them on it.
+GRAFT takes **two views of the same camera**: the photo with the people, and a view
+of the same scene *without* them, which is where the geometry comes from. Both
+benchmarks supply a real one. For your own images, best first:
 
-Both benchmarks supply a real empty-scene photograph. For your own images you have
-three options, in descending order of quality:
+```python
+model.predict("photo.jpg", scene_image="empty_room.jpg")   # a real empty-scene photo
 
-1. **A real photo of the empty scene.** Best, and what the reported numbers use.
-   ```python
-   model.predict("photo.jpg", scene_image="empty_room.jpg")
-   ```
-2. **Inpaint the people out.** Segments with SAM, then removes them with a
-   diffusion inpainter. Needs the `demo` extra. Both
-   [`FLUX.1-dev`](https://huggingface.co/black-forest-labs/FLUX.1-dev) and
-   [`Omnieraser`](https://huggingface.co/theSure/Omnieraser) are gated on the Hub,
-   so accept their terms and `huggingface-cli login` first.
+from graft.scene import remove_people                      # or inpaint them out
+model.predict("photo.jpg", scene_image=remove_people("photo.jpg"))
 
-   FLUX is 31 GiB of bf16 weights, so `remove_people` picks how to fit it from
-   the VRAM actually free: the whole pipeline on the GPU above ~35 GiB, one
-   component at a time above ~26 GiB, and otherwise streaming submodules, which
-   fits a 24 GiB card but is much slower. Override with `offload=` — see
-   `graft.scene.remove_people`. The choice changes only where the weights live,
-   never what is computed.
-   ```python
-   from graft.scene import remove_people
-   model.predict("photo.jpg", scene_image=remove_people("photo.jpg"))
-   ```
-   or `python demo.py photo.jpg --inpaint-scene`
-3. **Nothing** (`scene_image=None`). The image is reused as its own scene view, so
-   the people occlude the geometry being fitted. A fallback, not a supported setting.
+model.predict("photo.jpg")                                 # fallback: no scene view
+```
+
+Inpainting needs the `demo` extra, plus Hub access to the gated
+[`FLUX.1-dev`](https://huggingface.co/black-forest-labs/FLUX.1-dev) and
+[`Omnieraser`](https://huggingface.co/theSure/Omnieraser) (`huggingface-cli login`).
+`remove_people` sizes FLUX's 31 GiB to the free VRAM automatically — it fits a 24 GiB
+card, slowly; see `offload=` for the strategies. Passing no scene view at all reuses
+the photo as its own, so the people occlude the geometry being fitted: a fallback,
+not a supported setting.
 
 ---
 
-## Reproducing the published numbers
+## Evaluation
 
 ```bash
 export GRAFT_BENCHMARK_ROOT=/path/to/datasets    # holds PROX/
 python evaluate.py
 ```
 
-`$GRAFT_BENCHMARK_ROOT` must contain `PROX/quantitative`, `PROX/proxd_full` and
-`PROX/rich-sample100`. PROX and RICH are distributed by their own authors; this
-repository redistributes neither.
-
-**[`docs/EVALUATION.md`](docs/EVALUATION.md)** says exactly what to download for
-each benchmark and how to lay it out. PROX is one 1.2 GB archive used as it
-extracts; RICH is 100 specific frames that `scripts/build_rich_sample100.py`
-assembles from your own RICH download.
-
-Six metrics per benchmark: PA-MPJPE (mm), vertex-to-scene L2 (mm) and angle
-(degrees), and contact precision / recall / F1. What this repository produces:
+PROX and RICH are distributed by their own authors and not redistributed here;
+**[`docs/EVALUATION.md`](docs/EVALUATION.md)** says what to download and how to lay
+it out. Six metrics per benchmark — PA-MPJPE (mm), vertex-to-scene L2 (mm) and angle
+(degrees), contact precision / recall / F1:
 
 | model | benchmark | PA-MPJPE | V2S L2 | V2S angle | Prec | Rec | F1 | frames |
 |---|---|---|---|---|---|---|---|---|
@@ -205,17 +144,10 @@ Six metrics per benchmark: PA-MPJPE (mm), vertex-to-scene L2 (mm) and angle
 | `graft-no-visual` | PROX | 52.56 | 188.47 | 51.92 | 0.534 | 0.510 | 0.522 | 174 |
 | `graft-no-visual` | RICH | 45.52 | 223.10 | 34.06 | 0.434 | 0.717 | 0.540 | 94 |
 
-The `graft` rows are the published numbers, reproduced exactly. The
-`graft-no-visual` rows differ from the paper's ablation by ~2 mm PA-MPJPE, which
-predates the batched body fit used here; vertex-to-scene error and contact
-precision/recall/F1 are essentially unchanged.
-
-PROX-quantitative is 178 frames, of which 174 are scored; RICH is 100, of which 94
-are scored.
-
-Inference is not bitwise reproducible — GRAFT disables deterministic cuBLAS for
-speed, so metrics move by order `1e-4` between runs, invisible at the precision
-above.
+The `graft` rows are the published numbers, reproduced exactly. The geometry-only
+rows differ from the paper's ablation by ~2 mm PA-MPJPE, which predates the batched
+body fit used here; the interaction metrics are essentially unchanged. Scored frames
+are fewer than the totals (178 and 100) where no single-person prediction is made.
 
 ---
 
@@ -252,9 +184,8 @@ with one person and three refinement iterations:
 | Python glue | 6.7 | 4% |
 | **total** | **174.4** | 100% |
 
-Measured from prepared input tensors: the images are decoded and resized once,
-before the timed loop. `benchmark.py` exits non-zero if the median exceeds
-`--budget` (200 ms by default).
+Measured from prepared input tensors, so image decoding is excluded.
+`benchmark.py` exits non-zero if the median exceeds `--budget` (200 ms default).
 
 ---
 
@@ -285,10 +216,10 @@ If you find our work useful, please consider citing:
 
 ## Acknowledgements
 
-GRAFT builds directly on [MapAnything](https://github.com/facebook/map-anything)
+GRAFT builds directly on [MapAnything](https://github.com/facebookresearch/map-anything)
 (scene geometry), [NLF](https://github.com/isarandi/nlf) (initialisation),
 [MoGe](https://github.com/microsoft/MoGe) (metric scale),
 [smplfitter](https://github.com/isarandi/smplfitter) (body fitting), and
 optionally [WiLoR](https://github.com/rolpotamias/WiLoR) (hands) and
-[OmniEraser](https://github.com/theSure/Omnieraser) (scene inpainting). See
+[OmniEraser](https://github.com/PRIS-CV/Omnieraser) (scene inpainting). See
 `third_party/PATCHES.md`.

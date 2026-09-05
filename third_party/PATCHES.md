@@ -3,7 +3,7 @@
 ## MapAnything
 
 `third_party/mapanything/` is a copy of Meta's
-[MapAnything](https://github.com/facebook/map-anything), which GRAFT uses as its
+[MapAnything](https://github.com/facebookresearch/map-anything), which GRAFT uses as its
 scene-geometry backbone. It is vendored rather than installed because GRAFT needs
 a modification the upstream package does not have.
 

@@ -162,7 +162,7 @@ PRETRAINED: dict[str, dict] = {
         "file": "graft.pt",
         "config": GRAFTConfig(feedback_dropout_prob=0.35, flat_hand_mean=True),
     },
-    # "Without visual features" ablation: identical architecture, but every image
+    # Geometry-only mode: identical architecture, but every image
     # sample point is forced out of bounds, so the refinement is geometry-only.
     "graft-no-visual": {
         "file": "graft_no_visual.pt",

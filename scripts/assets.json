@@ -17,7 +17,7 @@
     {
       "path": "checkpoints/graft_no_visual.pt",
       "repo_file": "graft_no_visual.pt",
-      "note": "GRAFT without visual features (drop_vis_feats=True). This is the ablation checkpoint the paper reports, which is not the final checkpoint of that run."
+      "note": "GRAFT in geometry-only mode (drop_vis_feats=True) -- the mode the paper uses as a plug-in prior on top of other methods. This is the ablation checkpoint the paper reports, which is not the final checkpoint of that run."
     },
     {
       "path": "body_models/smplx/SMPLX_NEUTRAL.npz",

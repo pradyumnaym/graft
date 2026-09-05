@@ -7,7 +7,7 @@ refinements to pose, shape, translation and a per-person scale, so the
 reconstruction agrees with the scene geometry the body is in contact with.
 
 Two published checkpoints load into this class: ``graft``, the main model, and
-``graft-no-visual``, the "without visual features" ablation -- the same
+``graft-no-visual``, GRAFT in geometry-only mode -- the same
 architecture with ``drop_vis_feats=True``, so the transformer sees scene geometry
 only.
 
@@ -112,7 +112,7 @@ class GRAFTConfig:
     #: ``'scale'`` (published) rescales the body about the camera;
     #: ``'transl'`` only shifts it.
     alignment_type: str = "scale"
-    #: Blind the model to image features (the "without visual features" ablation).
+    #: Blind the model to image features (geometry-only mode).
     #: Sample points are pushed out of bounds, so the transformer sees geometry only.
     drop_vis_feats: bool = False
     #: SMPL-X hand-mean convention the checkpoint was trained under. This must
@@ -1138,7 +1138,7 @@ PRETRAINED: dict[str, dict] = {
         "file": "graft.pt",
         "config": GRAFTConfig(feedback_dropout_prob=0.35, flat_hand_mean=True),
     },
-    # "Without visual features" ablation: identical architecture, but every image
+    # Geometry-only mode: identical architecture, but every image
     # sample point is forced out of bounds, so the refinement is geometry-only.
     "graft-no-visual": {
         "file": "graft_no_visual.pt",

@@ -128,7 +128,7 @@ refinements to pose, shape, translation and a per-person scale, so the
 reconstruction agrees with the scene geometry the body is in contact with.
 
 Two published checkpoints load into this class: ``graft``, the main model, and
-``graft-no-visual``, the "without visual features" ablation -- the same
+``graft-no-visual``, GRAFT in geometry-only mode -- the same
 architecture with ``drop_vis_feats=True``, so the transformer sees scene geometry
 only.
 
