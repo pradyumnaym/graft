@@ -1,0 +1,49 @@
+MIT License
+
+Copyright (c) 2026 Pradyumna YM
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+--------------------------------------------------------------------------------
+
+The MIT licence above covers the code in this repository that we wrote. It does
+NOT cover the released model weights, the vendored third-party code, or the data
+and models this project depends on. Those terms are:
+
+  GRAFT model weights (ympradyumna/graft on the Hugging Face Hub)
+      Released for non-commercial research use only.
+
+  third_party/mapanything/   Apache License 2.0, (c) Meta Platforms, Inc.
+      Full text in third_party/mapanything/LICENSE. Modifications are recorded
+      in third_party/PATCHES.md and third_party/local-changes.patch.
+
+  third_party/omnieraser/    Under the OmniEraser project's own terms.
+
+Dependencies fetched at run time or downloaded by the user, each under its own
+licence and NOT redistributed here:
+
+  MapAnything weights (facebook/map-anything)   CC BY-NC 4.0 — non-commercial
+  SMPL-X body models                            non-commercial research licence
+  NLF detector weights                          non-commercial research use
+  MoGe, WiLoR, OmniEraser weights               see their respective projects
+  PROX and RICH datasets                        distributed by their own authors
+
+Because the pipeline loads CC BY-NC 4.0 and research-licensed models at run time,
+running GRAFT as released is non-commercial research use in practice, whatever the
+licence on our own source files permits in isolation.

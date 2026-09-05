@@ -1,0 +1,172 @@
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
+    @classmethod
+    def from_pretrained(
+        cls,
+        name_or_path: Union[str, Path] = "graft",
+        *,
+        config: Optional[GRAFTConfig] = None,
+        map_location: str = "cpu",
+    ) -> "GRAFTModel":
+        """Load a published checkpoint, or a local ``.pt`` file.
+
+        ``name_or_path`` is either one of :data:`PRETRAINED` (resolved inside the
+        data root) or a path to a checkpoint. For a bare path, pass ``config``
+        unless the checkpoint carries one: ``drop_vis_feats`` and
+        ``flat_hand_mean`` leave no trace in ``state_dict``.
+        """
+        key = str(name_or_path)
+        if key in PRETRAINED:
+            spec = PRETRAINED[key]
+            path = paths.require(paths.checkpoint_dir() / spec["file"], f"GRAFT checkpoint {key!r}")
+            cfg = config if config is not None else spec["config"]
+        else:
+            path = paths.require(Path(key).expanduser(), "GRAFT checkpoint")
+            cfg = config
+
+        state = torch.load(path, map_location=map_location, weights_only=False)
+        weights = state["model"] if isinstance(state, dict) and "model" in state else state
+        if cfg is None:
+            stored = state.get("config") if isinstance(state, dict) else None
+            if stored is None:
+                raise ValueError(
+                    f"{path} carries no config and none was passed. Pass an explicit "
+                    f"GRAFTConfig: drop_vis_feats / flat_hand_mean cannot be recovered "
+                    f"from the weights."
+                )
+            cfg = GRAFTConfig(**stored)
+
+        model = cls(cfg)
+        model.load_state_dict(weights, strict=True)
+        return model
+
+    def save_pretrained(self, path: Union[str, Path]) -> Path:
+        """Write a checkpoint that :meth:`from_pretrained` can load without a config."""
+        path = Path(path).expanduser()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        torch.save({"model": self.state_dict(), "config": vars(self.config)}, path)
+        return path
+
+    @torch.inference_mode()
+    def predict(
+        self,
+        image: "ImageLike",
+        scene_image: Optional["ImageLike"] = None,
+        *,
+        num_iters: int = 3,
+        refine_hands: bool = False,
+    ) -> GRAFTOutput:
+        """Reconstruct the people in one image, placed in the scene.
+
+        Args:
+            image: the photo containing the people. A path, PIL image, HWC array,
+                or CHW float tensor in [0, 1]. Resized to 518 on the longest side
+                and white-padded to a multiple of 14, as in training.
+            scene_image: a view of the same scene without the people, which is
+                where the scene geometry comes from. ``graft.scene.remove_people``
+                synthesises one if you have no empty-scene photograph. ``None``
+                reuses ``image`` itself, which is a fallback rather than a
+                supported setting.
+            num_iters: refinement iterations. 3 is what the paper reports.
+            refine_hands: replace the hand poses with WiLoR's. Off for the
+                reported metrics.
+
+        Returns:
+            A :class:`GRAFTOutput`, in the scene point map's camera frame, metres.
+
+        Raises:
+            NoPeopleDetected: if the pose estimator finds nobody in the image.
+        """
+        device = self.mean.device
+        image_t = prepare_image(to_pil(image), device=device)
+        scene_t = image_t if scene_image is None else prepare_image(to_pil(scene_image), device=device)
+        if scene_t.shape != image_t.shape:
+            raise ValueError(
+                f"image and scene_image must have the same aspect ratio; after "
+                f"preparation they are {tuple(image_t.shape[2:])} and {tuple(scene_t.shape[2:])}."
+            )
+
+        try:
+            out = self.infer(
+                {"image": image_t, "scene_image": scene_t},
+                num_iters=num_iters,
+                # MoGe supplies the scene geometry -- `infer`'s own default, and what
+                # the paper's qualitative results were produced with. The benchmarks
+                # instead run MapAnything geometry with MoGe only for metric scale
+                # (`use_moge=False, use_moge_scale=True`); see
+                # graft.eval.prox_eval.default_infer_kwargs.
+                use_moge=True,
+                use_moge_scale=False,
+                use_wilor_hands=refine_hands,
+            )
+        except RuntimeError as e:
+            if "no humans detected" not in str(e):
+                raise
+            raise NoPeopleDetected(
+                "No people were detected in this image. GRAFT refines an existing "
+                "per-frame pose estimate rather than detecting people itself, so "
+                "there is nothing for it to place in the scene."
+            ) from e
+
+        valid = out["valid_humans"][0]
+        smplx_data = {k: v[0][valid] for k, v in out["smplx_data"].items()}
+        init = {k: v[0][valid] for k, v in out["smplx_data_nlf_aligned"].items()}
+        posed = self.smplx_forward(smplx_data)
+        return GRAFTOutput(
+            smplx=smplx_data,
+            vertices=posed.vertices,
+            joints=posed.joints,
+            points=out["pts3d"][0],
+            K=out["K"][0],
+            init=init,
+            n_people=int(valid.sum()),
+        )
+
+    def smplx_forward(self, smplx_data: dict):
+        """Pose the SMPL-X mesh for a ``(n_people, ...)`` axis-angle parameter dict.
+
+        Uses the body model built with this checkpoint's ``flat_hand_mean``, so
+        the hands come out as the model intended.
+        """
+        body = self._ext['smplx_aa']
+        n = smplx_data['betas'].shape[0]
+        device = smplx_data['betas'].device
+        zeros = torch.zeros(n, 3, device=device)
+        return body(
+            betas=smplx_data['betas'].reshape(n, 10),
+            transl=smplx_data['transl'].reshape(n, 3),
+            global_orient=smplx_data['global_orient'].reshape(n, 3),
+            body_pose=smplx_data['body_pose'].reshape(n, 21, 3),
+            left_hand_pose=smplx_data['left_hand_pose'].reshape(n, 15, 3),
+            right_hand_pose=smplx_data['right_hand_pose'].reshape(n, 15, 3),
+            jaw_pose=smplx_data['jaw_pose'].reshape(n, 3),
+            expression=smplx_data['expression'].reshape(n, 10),
+            leye_pose=zeros,
+            reye_pose=zeros,
+        )
+
+    @property
+    def faces(self) -> np.ndarray:
+        """SMPL-X triangle indices, for turning :attr:`GRAFTOutput.vertices` into a mesh."""
+        return self._ext['smplx_aa'].faces
+
+
+#: The published checkpoints. ``feedback_dropout_prob`` is recorded at its trained
+#: value for fidelity; it is a training-time regulariser and is inert under `.eval()`.
+PRETRAINED: dict[str, dict] = {
+    # Main model. Trained with WiLoR hand initialisation and the flat-hand-mean
+    # SMPL-X convention.
+    "graft": {
+        "file": "graft.pt",
+        "config": GRAFTConfig(feedback_dropout_prob=0.35, flat_hand_mean=True),
+    },
+    # "Without visual features" ablation: identical architecture, but every image
+    # sample point is forced out of bounds, so the refinement is geometry-only.
+    "graft-no-visual": {
+        "file": "graft_no_visual.pt",
+        "config": GRAFTConfig(feedback_dropout_prob=0.35, drop_vis_feats=True,
+                              flat_hand_mean=False),
+    },
+}

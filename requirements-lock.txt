@@ -1,0 +1,38 @@
+# Exact versions of the environment the published numbers were produced in,
+# on Linux with CUDA 12.4 and Python 3.10. This is a record, not an install
+# target: install with install.sh, and consult this when a result does not
+# reproduce.
+
+# --- core
+torch==2.6.0+cu124
+torchvision==0.21.0+cu124
+numpy==1.26.4
+Pillow==11.3.0
+opencv-python==4.11.0.86
+scipy==1.15.3
+einops==0.8.1
+trimesh==4.10.0
+tqdm==4.67.1
+click==8.3.2
+huggingface-hub==0.36.0
+safetensors==0.7.0
+transformers==4.48.1
+smplx==0.1.28
+smplfitter==0.4.2
+roma==1.5.4
+uniception==0.1.6
+MoGe==2.0.0
+
+# --- eval
+open3d==0.17.0
+scikit-learn==1.7.2
+pytorch3d==0.7.9
+lang-sam==0.2.1
+pytest==9.0.2
+
+# --- demo
+wilor-mini==1.1
+scikit-image==0.25.2
+diffusers==0.33.1
+peft==0.19.1
+sentencepiece==0.2.1

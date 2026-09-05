@@ -1,0 +1,24 @@
+    def require_moge(self, device='cuda'):
+        """Load MoGe, used to put MapAnything's point map in metric scale."""
+        if self._ext['model_moge'] is None:
+            from moge.model.v2 import MoGeModel
+            self._ext['model_moge'] = MoGeModel.from_pretrained("Ruicheng/moge-2-vitl-normal").eval().to(device)
+
+    def require_nlf(self, device='cuda'):
+        """Load the NLF pose detector that provides GRAFT's initialisation."""
+        if self._ext['model_nlf'] is None:
+            ckpt = paths.require(paths.nlf_torchscript(), "NLF detector")
+            self._ext['model_nlf'] = torch.jit.load(str(ckpt), map_location=device).eval()
+
+    def require_wilor(self, device='cuda'):
+        """Load WiLoR, used only when ``use_wilor_hands=True`` to refine hands."""
+        if self._ext.get('wilor') is None:
+            # Lazy import: pulling wilor_mini imports ultralytics, which sets
+            # CUBLAS_WORKSPACE_CONFIG=:4096:8 (deterministic-slow cuBLAS). Only pay that on
+            # demand, and re-pop it so the rest of the process stays fast.
+            with optional("demo", "Hand refinement (refine_hands=True)"):
+                from wilor_mini.pipelines.wilor_hand_pose3d_estimation_pipeline import WiLorHandPose3dEstimationPipeline
+            enable_fast_gemm()
+            self._ext['wilor'] = WiLorHandPose3dEstimationPipeline(device=device, dtype=torch.float16, verbose=False)
+            self._ext['wilor'].wilor_model.to(device)
+

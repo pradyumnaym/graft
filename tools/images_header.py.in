@@ -1,0 +1,18 @@
+"""Image preparation for GRAFT.
+
+`prepare_image` is vendored verbatim (by AST source range, see tools/extract.py)
+from the research tree's `utils/utils.py` -- it defines the exact geometry the
+published numbers were measured under: longest side resized to 518 with LANCZOS,
+then padded with white to a multiple of 14 (DINOv2's patch size). The only change
+is that the destination device is a parameter instead of a hard-coded `.cuda()`.
+"""
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Union
+
+import numpy as np
+import torch
+from PIL import Image, ImageOps
+
+ImageLike = Union[str, Path, Image.Image, np.ndarray, torch.Tensor]

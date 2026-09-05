@@ -1,0 +1,94 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "graft"
+version = "1.0.0"
+description = "GRAFT: Geometric Refinement and Fitting Transformer for Human Scene Reconstruction"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+
+# torch must be installed FIRST, from the CUDA-matched index -- `bash install.sh`
+# does that. It is listed here so the dependency set is complete, but installing
+# this project without that step can pull a CPU-only or mismatched build.
+#
+# The exact versions the published numbers were produced with are recorded in
+# requirements-lock.txt. That file is a record, not an install target.
+dependencies = [
+  "torch==2.6.0",
+  "torchvision==0.21.0",
+  "numpy==1.26.4",
+  # Pillow's LANCZOS resampler is on the inference path (graft/ops/images.py),
+  # so this pin is part of reproducing the numbers, not housekeeping.
+  "Pillow==11.3.0",
+  "opencv-python",
+  "scipy",
+  "einops",
+  "trimesh",
+  "tqdm",
+  "click",
+  "huggingface_hub",
+  "safetensors",
+  "transformers",
+  "smplx==0.1.28",
+  "smplfitter==0.4.2",
+  "roma",
+  # Every git dependency is pinned to the exact commit the published numbers were
+  # produced with (the versions in requirements-lock.txt). Unpinned, `main` drifts:
+  # MoGe 3.0.0 moved to numpy>=2, which makes this project's numpy==1.26.4
+  # unsatisfiable and the install fail outright.
+  #
+  # MapAnything's transformer blocks. The model itself is vendored and patched;
+  # see third_party/PATCHES.md.
+  "uniception @ git+https://github.com/pradyumnaym/UniCeption.git@c756d333adebc7ebbfb022e30e0b9c752f42dd3b",
+  # Metric scale for the scene point map.
+  "moge @ git+https://github.com/microsoft/MoGe.git@07444410f1e33f402353b99d6ccd26bd31e469e8",
+]
+
+[project.optional-dependencies]
+# Reproducing the PROX / RICH numbers.
+eval = [
+  "open3d",                                                   # contact-metric closest points
+  "scikit-learn",                                             # precision / recall / F1
+  "lang-sam @ git+https://github.com/pradyumnaym/lang-segment-anything.git@c425510aa4d815a0446ebbfb2adb0ea7e6ef7ed7",
+  # Scene-scan decimation in scripts/build_rich_sample100.py.
+  "fast-simplification",
+]
+
+# Hand refinement (`refine_hands=True`) and scene inpainting (`graft.scene`).
+demo = [
+  "wilor-mini @ git+https://github.com/pradyumnaym/WiLoR-mini.git@e1f00ce1d8da326162090dba02d8ad1037198243",
+  "scikit-image",                                             # hand-crop resampling
+  "diffusers==0.33.1",
+  # diffusers keeps accelerate in an extra, but graft.scene calls
+  # enable_model_cpu_offload / enable_sequential_cpu_offload directly.
+  "accelerate",
+  "peft",
+  "sentencepiece",
+  "lang-sam @ git+https://github.com/pradyumnaym/lang-segment-anything.git@c425510aa4d815a0446ebbfb2adb0ea7e6ef7ed7",
+]
+
+# Everything. `bash install.sh` installs this by default, one extra at a time so
+# that a failure in either costs you that feature rather than the environment.
+all = [
+  "graft[eval,demo]",
+]
+
+[project.urls]
+Homepage = "https://pradyumnaym.github.io/graft/"
+Repository = "https://github.com/pradyumnaym/graft"
+Paper = "https://arxiv.org/abs/2604.19624"
+
+[tool.setuptools]
+# `mapanything` is vendored (patched); see third_party/PATCHES.md.
+package-dir = { "graft" = "graft", "mapanything" = "third_party/mapanything" }
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["graft*"]
+
+[tool.setuptools.package-data]
+graft = ["assets/*"]

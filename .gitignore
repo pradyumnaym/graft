@@ -1,6 +1,19 @@
-graft
-graft/
-graft_latex
+# Local working directories (paper source, project website) -- not part of the release.
 graft_latex/
-graft_website
 graft_website/
+
+# Populated by scripts/download_assets.py. Large and licence-gated; never committed.
+data/
+
+# Local scratch and evaluation results.
+scratch/
+outputs/
+
+# Internal handoff notes; never part of the public release.
+HANDOFF.md
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/

@@ -1,0 +1,77 @@
+{
+  "_comment": [
+    "Manifest for scripts/download_assets.py.",
+    "'repo_file'/'repo_dir' come from the Hugging Face Hub -- our weights and the",
+    "benchmark assets we produced. 'gated' entries come from an MPI download portal",
+    "and need that site's account, which the downloader prompts for. 'url' entries",
+    "are public direct downloads.",
+    "Override the Hub source with $GRAFT_HF_REPO."
+  ],
+  "hf_repo": "ympradyumna/graft",
+  "files": [
+    {
+      "path": "checkpoints/graft.pt",
+      "repo_file": "graft.pt",
+      "note": "GRAFT, the main model."
+    },
+    {
+      "path": "checkpoints/graft_no_visual.pt",
+      "repo_file": "graft_no_visual.pt",
+      "note": "GRAFT without visual features (drop_vis_feats=True). This is the ablation checkpoint the paper reports, which is not the final checkpoint of that run."
+    },
+    {
+      "path": "body_models/smplx/SMPLX_NEUTRAL.npz",
+      "note": "SMPL-X body model. Register at https://smpl-x.is.tue.mpg.de; the downloader asks for those credentials.",
+      "gated": "smplx",
+      "archive": "models_smplx_v1_1.zip",
+      "member": "models/smplx/SMPLX_NEUTRAL.npz"
+    },
+    {
+      "path": "body_models/smplx/SMPLX_MALE.npz",
+      "eval": true,
+      "note": "Required only for the PROX benchmark, whose MoSh ground truth is male-gendered. Same archive and account as the neutral model.",
+      "gated": "smplx",
+      "archive": "models_smplx_v1_1.zip",
+      "member": "models/smplx/SMPLX_MALE.npz"
+    },
+    {
+      "path": "body_models/smplx/kid_template.npy",
+      "note": "SMPL-X kid shape template, required by smplfitter's BodyModel. Generated as zeros rather than downloaded: it only enters the mesh scaled by kid_factor, which GRAFT never sets, so its contents cannot affect any output. The real file is gated behind a separate AGORA registration, which this avoids.",
+      "synthesize": "kid_template"
+    },
+    {
+      "path": "nlf/nlf_l_multi_0.3.2.patch1.torchscript",
+      "note": "NLF supplies GRAFT's per-frame initialisation. No account needed. This is the exact build the published numbers were produced with (md5 017838f287342f2fe95da5271919526c); other v0.3.2 builds load but do not reproduce the table.",
+      "url": "https://github.com/isarandi/nlf/releases/download/v0.3.2/nlf_l_multi_0.3.2.patch1.torchscript",
+      "alt_paths": [
+        "nlf/nlf_l_0.3.2.patch1.torchscript",
+        "nlf/nlf_l_0.3.2.patch4.torchscript",
+        "nlf/nlf_l_multi_0.3.2.torchscript"
+      ]
+    },
+    {
+      "path": "scene_image.png",
+      "repo_file": "eval/scene_image.png",
+      "eval": true,
+      "note": "The PROX empty-scene view GRAFT consumes as its second input."
+    },
+    {
+      "path": "contact_vertice_weights.pkl",
+      "repo_file": "eval/contact_vertice_weights.pkl",
+      "eval": true,
+      "note": "Per-vertex weights for the V2S metric."
+    },
+    {
+      "path": "prox_quantitative_depth.pkl",
+      "repo_file": "eval/prox_quantitative_depth.pkl",
+      "eval": true,
+      "note": "PROX scene depth. Loaded by the PROX context but not read by the metrics; kept so the loader stays unmodified."
+    },
+    {
+      "path": "imgs/rich/scene_imgs",
+      "repo_dir": "eval/rich_scene_imgs",
+      "eval": true,
+      "note": "Per-(sequence, camera) empty-scene views for RICH, 33 files. Ours, not RICH's."
+    }
+  ]
+}

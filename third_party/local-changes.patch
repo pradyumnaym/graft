@@ -1,0 +1,624 @@
+diff --git a/mapanything/models/__init__.py b/mapanything/models/__init__.py
+index 44a32f6..7c1417f 100644
+--- a/mapanything/models/__init__.py
++++ b/mapanything/models/__init__.py
+@@ -76,6 +76,10 @@ MODEL_CONFIGS = {
+         "module": "mapanything.models.external.anycalib",
+         "class_name": "AnyCalibWrapper",
+     },
++    "da3": {
++        "module": "mapanything.models.external.da3",
++        "class_name": "DA3Wrapper",
++    },
+     "dust3r": {
+         "module": "mapanything.models.external.dust3r",
+         "class_name": "DUSt3RBAWrapper",
+diff --git a/mapanything/models/external/da3/__init__.py b/mapanything/models/external/da3/__init__.py
+new file mode 100644
+index 0000000..eb21977
+--- /dev/null
++++ b/mapanything/models/external/da3/__init__.py
+@@ -0,0 +1,147 @@
++# Copyright (c) Meta Platforms, Inc. and affiliates.
++
++# This source code is licensed under the Apache License, Version 2.0
++# found in the LICENSE file in the root directory of this source tree.
++
++"""
++Inference wrapper for Depth Anything 3
++"""
++
++import torch
++from depth_anything_3.api import DepthAnything3
++
++from mapanything.models.external.vggt.utils.geometry import closed_form_inverse_se3
++from mapanything.models.external.vggt.utils.rotation import mat_to_quat
++from mapanything.utils.geometry import (
++    convert_ray_dirs_depth_along_ray_pose_trans_quats_to_pointmap,
++    convert_z_depth_to_depth_along_ray,
++    depthmap_to_camera_frame,
++    get_rays_in_camera_frame,
++)
++
++
++class DA3Wrapper(torch.nn.Module):
++    def __init__(
++        self,
++        name,
++        torch_hub_force_reload,
++        hf_model_name,
++    ):
++        super().__init__()
++        self.name = name
++        self.torch_hub_force_reload = torch_hub_force_reload
++        self.hf_model_name = hf_model_name
++
++        # Load pre-trained weights
++        if not torch_hub_force_reload:
++            # Initialize the DA3 model from huggingface hub cache
++            print("Loading DA3 from huggingface cache ...")
++            self.model = DepthAnything3.from_pretrained(
++                self.hf_model_name,
++            )
++        else:
++            # Initialize the DA3 model
++            self.model = DepthAnything3.from_pretrained(
++                self.hf_model_name, force_download=True
++            )
++
++        # Get the dtype for DA3 inference
++        # bfloat16 is supported on Ampere GPUs (Compute Capability 8.0+)
++        self.dtype = (
++            torch.bfloat16
++            if torch.cuda.get_device_capability()[0] >= 8
++            else torch.float16
++        )
++
++    def forward(self, views):
++        """
++        Forward pass wrapper for DA3
++
++        Assumption:
++        - All the input views have the same image shape.
++
++        Args:
++            views (List[dict]): List of dictionaries containing the input views' images and instance information.
++                                Each dictionary should contain the following keys:
++                                    "img" (tensor): Image tensor of shape (B, C, H, W).
++                                    "data_norm_type" (list): ["dinov2"]
++
++        Returns:
++            List[dict]: A list containing the final outputs for all N views.
++        """
++        # Get input shape of the images, number of views, and batch size per view
++        batch_size_per_view, _, height, width = views[0]["img"].shape
++        num_views = len(views)
++
++        # Check the data norm type
++        data_norm_type = views[0]["data_norm_type"][0]
++        assert data_norm_type == "dinov2", (
++            "DA3 expects DINOv2 normalization for the input images"
++        )
++
++        # Concatenate the images to create a single (B, V, C, H, W) tensor
++        img_list = [view["img"] for view in views]
++        images = torch.stack(img_list, dim=1)
++
++        # Run the DA3 model
++        with torch.autocast("cuda", dtype=self.dtype):
++            results = self.model(images, export_feat_layers=[])
++
++        # Need high precision for transformations
++        with torch.autocast("cuda", enabled=False):
++            res = []
++            for view_idx in range(num_views):
++                # Get the extrinsics, intrinsics, depth map for the current view
++                curr_view_extrinsic = results["extrinsics"][:, view_idx, ...]
++                curr_view_extrinsic = closed_form_inverse_se3(
++                    curr_view_extrinsic
++                )  # Convert to cam2world
++                curr_view_intrinsic = results["intrinsics"][:, view_idx, ...]
++                curr_view_depth_z = results["depth"][:, view_idx, ...]
++                curr_view_depth_z = curr_view_depth_z.squeeze(-1)
++                curr_view_confidence = results["depth_conf"][:, view_idx, ...]
++
++                # Get the camera frame pointmaps
++                curr_view_pts3d_cam, _ = depthmap_to_camera_frame(
++                    curr_view_depth_z, curr_view_intrinsic
++                )
++
++                # Convert the extrinsics to quaternions and translations
++                curr_view_cam_translations = curr_view_extrinsic[..., :3, 3]
++                curr_view_cam_quats = mat_to_quat(curr_view_extrinsic[..., :3, :3])
++
++                # Convert the z depth to depth along ray
++                curr_view_depth_along_ray = convert_z_depth_to_depth_along_ray(
++                    curr_view_depth_z, curr_view_intrinsic
++                )
++                curr_view_depth_along_ray = curr_view_depth_along_ray.unsqueeze(-1)
++
++                # Get the ray directions on the unit sphere in the camera frame
++                _, curr_view_ray_dirs = get_rays_in_camera_frame(
++                    curr_view_intrinsic, height, width, normalize_to_unit_sphere=True
++                )
++
++                # Get the pointmaps
++                curr_view_pts3d = (
++                    convert_ray_dirs_depth_along_ray_pose_trans_quats_to_pointmap(
++                        curr_view_ray_dirs,
++                        curr_view_depth_along_ray,
++                        curr_view_cam_translations,
++                        curr_view_cam_quats,
++                    )
++                )
++
++                # Append the outputs to the result list
++                res.append(
++                    {
++                        "pts3d": curr_view_pts3d,
++                        "pts3d_cam": curr_view_pts3d_cam,
++                        "ray_directions": curr_view_ray_dirs,
++                        "depth_along_ray": curr_view_depth_along_ray,
++                        "cam_trans": curr_view_cam_translations,
++                        "cam_quats": curr_view_cam_quats,
++                        "conf": curr_view_confidence,
++                    }
++                )
++
++        return res
+diff --git a/mapanything/mapanything/model.py b/mapanything/mapanything/model.py
+index 74ef15a..fae91cb 100644
+--- a/mapanything/mapanything/model.py
++++ b/mapanything/mapanything/model.py
+@@ -76,6 +76,7 @@ from uniception.models.prediction_heads.dpt import DPTFeature, DPTRegressionProc
+ from uniception.models.prediction_heads.linear import LinearFeature
+ from uniception.models.prediction_heads.mlp_head import MLPHead
+ from uniception.models.prediction_heads.pose_head import PoseHead
++from uniception.models.utils.transformer_blocks import Mlp, SwiGLUFFNFused
+ 
+ # Enable TF32 precision if supported (for GPU >= Ampere and PyTorch >= 1.12)
+ if hasattr(torch.backends.cuda, "matmul") and hasattr(
+@@ -101,6 +102,8 @@ class MapAnything(nn.Module, PyTorchModelHubMixin):
+         load_specific_pretrained_submodules: bool = False,
+         specific_pretrained_submodules: list = None,
+         torch_hub_force_reload: bool = False,
++        use_register_tokens_from_encoder: bool = False,
++        info_sharing_mlp_layer_str: str = "mlp",
+     ):
+         """
+         Multi-view model containing an image encoder fused with optional geometric modalities followed by a multi-view attention transformer and respective downstream heads.
+@@ -118,6 +121,8 @@ class MapAnything(nn.Module, PyTorchModelHubMixin):
+             load_specific_pretrained_submodules (bool): Whether to load specific pretrained submodules. (default: False)
+             specific_pretrained_submodules (list): List of specific pretrained submodules to load. Must be provided when load_specific_pretrained_submodules is True. (default: None)
+             torch_hub_force_reload (bool): Whether to force reload the encoder from torch hub. (default: False)
++            use_register_tokens_from_encoder (bool): Whether to use register tokens from encoder. (default: False)
++            info_sharing_mlp_layer_str (str): Type of MLP layer to use in the multi-view transformer. Useful for DINO init of the multi-view transformer. Options: "mlp" or "swiglufused". (default: "mlp")
+         """
+         super().__init__()
+ 
+@@ -131,6 +136,8 @@ class MapAnything(nn.Module, PyTorchModelHubMixin):
+         self.load_specific_pretrained_submodules = load_specific_pretrained_submodules
+         self.specific_pretrained_submodules = specific_pretrained_submodules
+         self.torch_hub_force_reload = torch_hub_force_reload
++        self.use_register_tokens_from_encoder = use_register_tokens_from_encoder
++        self.info_sharing_mlp_layer_str = info_sharing_mlp_layer_str
+         self.class_init_args = {
+             "name": self.name,
+             "encoder_config": self.encoder_config,
+@@ -141,6 +148,8 @@ class MapAnything(nn.Module, PyTorchModelHubMixin):
+             "load_specific_pretrained_submodules": self.load_specific_pretrained_submodules,
+             "specific_pretrained_submodules": self.specific_pretrained_submodules,
+             "torch_hub_force_reload": self.torch_hub_force_reload,
++            "use_register_tokens_from_encoder": self.use_register_tokens_from_encoder,
++            "info_sharing_mlp_layer_str": self.info_sharing_mlp_layer_str,
+         }
+ 
+         # Get relevant parameters from the configs
+@@ -201,6 +210,16 @@ class MapAnything(nn.Module, PyTorchModelHubMixin):
+         self.scale_token = nn.Parameter(torch.zeros(self.encoder.enc_embed_dim))
+         torch.nn.init.trunc_normal_(self.scale_token, std=0.02)
+ 
++        # Set the MLP layer config for the info sharing transformer
++        if info_sharing_mlp_layer_str == "mlp":
++            info_sharing_config["module_args"]["mlp_layer"] = Mlp
++        elif info_sharing_mlp_layer_str == "swiglufused":
++            info_sharing_config["module_args"]["mlp_layer"] = SwiGLUFFNFused
++        else:
++            raise ValueError(
++                f"Invalid info_sharing_mlp_layer_str: {info_sharing_mlp_layer_str}. Valid options: ['mlp', 'swiglufused']"
++            )
++
+         # Initialize the info sharing module (multi-view transformer)
+         self._initialize_info_sharing(info_sharing_config)
+ 
+@@ -628,7 +647,9 @@ class MapAnything(nn.Module, PyTorchModelHubMixin):
+             views (List[dict]): List of dictionaries containing the input views' images and instance information.
+ 
+         Returns:
+-            List[torch.Tensor]: A list containing the encoded features for all N views.
++            A tuple containing:
++                List[torch.Tensor]: A list containing the encoded features for all N views.
++                List[torch.Tensor]: A list containing the encoded per-view registers for all N views.
+         """
+         num_views = len(views)
+         data_norm_type = views[0]["data_norm_type"][0]
+@@ -641,8 +662,16 @@ class MapAnything(nn.Module, PyTorchModelHubMixin):
+         all_encoder_features_across_views = encoder_output.features.chunk(
+             num_views, dim=0
+         )
++        all_encoder_registers_across_views = None
++        if (
++            self.use_register_tokens_from_encoder
++            and encoder_output.registers is not None
++        ):
++            all_encoder_registers_across_views = encoder_output.registers.chunk(
++                num_views, dim=0
++            )
+ 
+-        return all_encoder_features_across_views
++        return all_encoder_features_across_views, all_encoder_registers_across_views
+ 
+     def _compute_pose_quats_and_trans_for_across_views_in_ref_view(
+         self,
+@@ -1474,7 +1503,7 @@ class MapAnything(nn.Module, PyTorchModelHubMixin):
+ 
+         return dense_final_outputs, pose_final_outputs, scale_final_output
+ 
+-    def forward(self, views, memory_efficient_inference=False):
++    def forward(self, views, memory_efficient_inference=False, early_exit=False):
+         """
+         Forward pass performing the following operations:
+         1. Encodes the N input views (images).
+@@ -1509,7 +1538,9 @@ class MapAnything(nn.Module, PyTorchModelHubMixin):
+         num_views = len(views)
+ 
+         # Run the image encoder on all the input views
+-        all_encoder_features_across_views = self._encode_n_views(views)
++        all_encoder_features_across_views, all_encoder_registers_across_views = (
++            self._encode_n_views(views)
++        )
+ 
+         # Encode the optional geometric inputs and fuse with the encoded features from the N input views
+         # Use high precision to prevent NaN values after layer norm in dense representation encoder (due to high variance in last dim of features)
+@@ -1531,6 +1562,7 @@ class MapAnything(nn.Module, PyTorchModelHubMixin):
+         # Output is a list containing the encoded features for all N views after information sharing.
+         info_sharing_input = MultiViewTransformerInput(
+             features=all_encoder_features_across_views,
++            additional_input_tokens_per_view=all_encoder_registers_across_views,
+             additional_input_tokens=input_scale_token,
+         )
+         if self.info_sharing_return_type == "no_intermediate_features":
+@@ -1542,6 +1574,8 @@ class MapAnything(nn.Module, PyTorchModelHubMixin):
+             ) = self.info_sharing(info_sharing_input)
+ 
+         allfeats = [all_encoder_features_across_views, final_info_sharing_multi_view_feat, intermediate_info_sharing_multi_view_feat]  # For debugging
++        if early_exit:
++            return None, allfeats
+         if self.pred_head_type == "linear":
+             # Stack the features for all views
+             dense_head_inputs = torch.cat(
+@@ -1979,6 +2013,7 @@ class MapAnything(nn.Module, PyTorchModelHubMixin):
+         ignore_pose_inputs: bool = False,
+         ignore_depth_scale_inputs: bool = False,
+         ignore_pose_scale_inputs: bool = False,
++        early_exit: bool = False,
+     ) -> List[Dict[str, torch.Tensor]]:
+         """
+         User-friendly inference with strict input validation and automatic conversion.
+@@ -2075,7 +2110,13 @@ class MapAnything(nn.Module, PyTorchModelHubMixin):
+             for name in view.keys():
+                 if name in ignore_keys:
+                     continue
+-                view[name] = view[name].to(self.device, non_blocking=True)
++                val = view[name]
++                if name == "camera_poses" and isinstance(val, tuple):
++                    view[name] = tuple(
++                        x.to(self.device, non_blocking=True) for x in val
++                    )
++                elif hasattr(val, "to"):
++                    view[name] = val.to(self.device, non_blocking=True)
+ 
+         # Pre-process the input views
+         processed_views = preprocess_input_views_for_inference(validated_views)
+@@ -2092,8 +2133,11 @@ class MapAnything(nn.Module, PyTorchModelHubMixin):
+         # Run the model
+         with torch.autocast("cuda", enabled=bool(use_amp), dtype=amp_dtype):
+             preds, allfeats = self.forward(
+-                processed_views, memory_efficient_inference=memory_efficient_inference
++                processed_views, memory_efficient_inference=memory_efficient_inference, early_exit=early_exit
+             )
++
++        if early_exit:
++            return None, allfeats, None
+         
+         unprocessed_pts3d = [x['pts3d'] for x in preds]
+ 
+diff --git a/mapanything/utils/geometry.py b/mapanything/utils/geometry.py
+index 4e699ee..dbef72e 100644
+--- a/mapanything/utils/geometry.py
++++ b/mapanything/utils/geometry.py
+@@ -1131,7 +1131,7 @@ def relative_pose_transformation(trans_01, trans_02):
+     Example::
+         >>> trans_01 = torch.eye(4)  # 4x4
+         >>> trans_02 = torch.eye(4)  # 4x4
+-        >>> trans_12 = relative_transformation(trans_01, trans_02)  # 4x4
++        >>> trans_12 = relative_pose_transformation(trans_01, trans_02)  # 4x4
+     """
+     if not torch.is_tensor(trans_01):
+         raise TypeError(
+diff --git a/mapanything/utils/image.py b/mapanything/utils/image.py
+index e58a508..a10a4ae 100644
+--- a/mapanything/utils/image.py
++++ b/mapanything/utils/image.py
+@@ -62,12 +62,25 @@ RESOLUTION_MAPPINGS = {
+         0.562: (288, 512),  # 9:16
+         0.500: (256, 512),  # 1:2
+     },
++    504: {
++        1.000: (504, 504),  # 1:1
++        1.333: (504, 378),  # 4:3
++        1.565: (504, 322),  # 3:2
++        1.800: (504, 280),  # 16:9
++        2.118: (504, 238),  # 2:1
++        3.273: (504, 154),  # 3.2:1
++        0.750: (378, 504),  # 3:4
++        0.639: (322, 504),  # 2:3
++        0.556: (280, 504),  # 9:16
++        0.472: (238, 504),  # 1:2
++    },
+ }
+ 
+ # Precomputed sorted aspect ratio keys for efficient lookup
+ ASPECT_RATIO_KEYS = {
+     518: sorted(RESOLUTION_MAPPINGS[518].keys()),
+     512: sorted(RESOLUTION_MAPPINGS[512].keys()),
++    504: sorted(RESOLUTION_MAPPINGS[504].keys()),
+ }
+ 
+ 
+diff --git a/mapanything/utils/inference.py b/mapanything/utils/inference.py
+index b2925ee..8d0254a 100644
+--- a/mapanything/utils/inference.py
++++ b/mapanything/utils/inference.py
+@@ -23,145 +23,6 @@ from mapanything.utils.geometry import (
+     rotation_matrix_to_quaternion,
+ )
+ from mapanything.utils.image import rgb
+-import torch.nn.functional as F
+-
+-# Toggle this to switch between CPU and CUDA edge masking
+-USE_CUDA_EDGE_MASKING = True
+-
+-
+-def _points_to_normals_cuda(pts3d: torch.Tensor, mask: torch.Tensor) -> tuple:
+-    """CUDA version of points_to_normals. Batched.
+-    Args:
+-        pts3d: (B, H, W, 3) points
+-        mask: (B, H, W) bool mask
+-    Returns:
+-        normals: (B, H, W, 3)
+-        normals_mask: (B, H, W)
+-    """
+-    B, H, W, _ = pts3d.shape
+-    device = pts3d.device
+-    
+-    # Pad points
+-    pts_pad = F.pad(pts3d.permute(0, 3, 1, 2), (1, 1, 1, 1), mode='replicate').permute(0, 2, 3, 1)  # (B, H+2, W+2, 3)
+-    mask_pad = F.pad(mask.float().unsqueeze(1), (1, 1, 1, 1), mode='constant', value=0).squeeze(1).bool()  # (B, H+2, W+2)
+-    
+-    # Compute differences
+-    center = pts_pad[:, 1:-1, 1:-1, :]  # (B, H, W, 3)
+-    up = pts_pad[:, :-2, 1:-1, :] - center
+-    left = pts_pad[:, 1:-1, :-2, :] - center
+-    down = pts_pad[:, 2:, 1:-1, :] - center
+-    right = pts_pad[:, 1:-1, 2:, :] - center
+-    
+-    # Cross products for 4 triangle normals
+-    n1 = torch.cross(up, left, dim=-1)
+-    n2 = torch.cross(left, down, dim=-1)
+-    n3 = torch.cross(down, right, dim=-1)
+-    n4 = torch.cross(right, up, dim=-1)
+-    
+-    # Normalize
+-    n1 = n1 / (n1.norm(dim=-1, keepdim=True) + 1e-12)
+-    n2 = n2 / (n2.norm(dim=-1, keepdim=True) + 1e-12)
+-    n3 = n3 / (n3.norm(dim=-1, keepdim=True) + 1e-12)
+-    n4 = n4 / (n4.norm(dim=-1, keepdim=True) + 1e-12)
+-    
+-    # Valid masks for each triangle
+-    m_center = mask_pad[:, 1:-1, 1:-1]
+-    m_up = mask_pad[:, :-2, 1:-1]
+-    m_left = mask_pad[:, 1:-1, :-2]
+-    m_down = mask_pad[:, 2:, 1:-1]
+-    m_right = mask_pad[:, 1:-1, 2:]
+-    
+-    v1 = m_center & m_up & m_left
+-    v2 = m_center & m_left & m_down
+-    v3 = m_center & m_down & m_right
+-    v4 = m_center & m_right & m_up
+-    
+-    # Average valid normals
+-    normals = (n1 * v1.unsqueeze(-1) + n2 * v2.unsqueeze(-1) + n3 * v3.unsqueeze(-1) + n4 * v4.unsqueeze(-1))
+-    normals = normals / (normals.norm(dim=-1, keepdim=True) + 1e-12)
+-    
+-    normals_mask = v1 | v2 | v3 | v4
+-    normals = torch.where(normals_mask.unsqueeze(-1), normals, torch.zeros_like(normals))
+-    
+-    return normals, normals_mask
+-
+-
+-def _depth_edge_cuda(depth: torch.Tensor, rtol: float, kernel_size: int = 3, mask: torch.Tensor = None) -> torch.Tensor:
+-    """CUDA version of depth_edge. Batched.
+-    Args:
+-        depth: (B, H, W) depth values
+-        rtol: relative tolerance
+-        mask: (B, H, W) bool mask
+-    Returns:
+-        edge: (B, H, W) bool
+-    """
+-    B, H, W = depth.shape
+-    padding = kernel_size // 2
+-    
+-    depth_4d = depth.unsqueeze(1)  # (B, 1, H, W)
+-    
+-    if mask is not None:
+-        # Use -inf for invalid pixels in max, +inf for min
+-        depth_masked_max = torch.where(mask.unsqueeze(1), depth_4d, torch.tensor(float('-inf'), device=depth.device))
+-        depth_masked_min = torch.where(mask.unsqueeze(1), -depth_4d, torch.tensor(float('-inf'), device=depth.device))
+-    else:
+-        depth_masked_max = depth_4d
+-        depth_masked_min = -depth_4d
+-    
+-    max_val = F.max_pool2d(depth_masked_max, kernel_size, stride=1, padding=padding).squeeze(1)
+-    min_val = -F.max_pool2d(depth_masked_min, kernel_size, stride=1, padding=padding).squeeze(1)
+-    
+-    diff = max_val - min_val
+-    edge = (diff / (depth + 1e-12)) > rtol
+-    
+-    return edge
+-
+-
+-def _normals_edge_cuda(normals: torch.Tensor, tol: float, kernel_size: int = 3, mask: torch.Tensor = None) -> torch.Tensor:
+-    """CUDA version of normals_edge. Batched.
+-    Args:
+-        normals: (B, H, W, 3) normals
+-        tol: tolerance in degrees
+-        mask: (B, H, W) bool mask
+-    Returns:
+-        edge: (B, H, W) bool
+-    """
+-    B, H, W, _ = normals.shape
+-    device = normals.device
+-    padding = kernel_size // 2
+-    
+-    # Normalize
+-    normals = normals / (normals.norm(dim=-1, keepdim=True) + 1e-12)
+-    
+-    # Unfold to get patches
+-    normals_bchw = normals.permute(0, 3, 1, 2)  # (B, 3, H, W)
+-    normals_padded = F.pad(normals_bchw, (padding, padding, padding, padding), mode='replicate')
+-    
+-    # Use unfold to get windows
+-    patches = normals_padded.unfold(2, kernel_size, 1).unfold(3, kernel_size, 1)  # (B, 3, H, W, k, k)
+-    
+-    # Compute dot product with center normal
+-    center = normals_bchw.unsqueeze(-1).unsqueeze(-1)  # (B, 3, H, W, 1, 1)
+-    dots = (center * patches).sum(dim=1)  # (B, H, W, k, k)
+-    dots = dots.clamp(-1, 1)
+-    
+-    if mask is not None:
+-        mask_padded = F.pad(mask.float().unsqueeze(1), (padding, padding, padding, padding), mode='constant', value=0)
+-        mask_patches = mask_padded.unfold(2, kernel_size, 1).unfold(3, kernel_size, 1).squeeze(1)  # (B, H, W, k, k)
+-        angles = torch.where(mask_patches.bool(), torch.acos(dots), torch.zeros_like(dots))
+-    else:
+-        angles = torch.acos(dots)
+-    
+-    max_angle = angles.amax(dim=(-2, -1))  # (B, H, W)
+-    
+-    # Max pool to spread edges
+-    max_angle_4d = max_angle.unsqueeze(1)
+-    max_angle = F.max_pool2d(max_angle_4d, kernel_size, stride=1, padding=padding).squeeze(1)
+-    
+-    edge = max_angle > (tol * 3.14159265 / 180.0)
+-    
+-    return edge
+-
+ 
+ # Hard constraints - exactly what users can provide
+ ALLOWED_VIEW_KEYS = {
+@@ -555,59 +416,42 @@ def postprocess_model_outputs_for_inference(
+ 
+             # Apply edge mask if requested and we have the required data
+             if mask_edges and final_mask is not None and "pts3d" in processed_output:
+-                if USE_CUDA_EDGE_MASKING:
+-                    # CUDA version - batched, much faster
+-                    pred_pts3d = processed_output["pts3d"]  # (B, H, W, 3) on GPU
+-                    depth_z = processed_output["depth_z"].squeeze(-1)  # (B, H, W)
+-                    final_mask_torch = torch.from_numpy(final_mask).to(pred_pts3d.device)
+-                    
+-                    # Compute normals on GPU
+-                    normals, normals_mask = _points_to_normals_cuda(pred_pts3d, final_mask_torch)
+-                    
+-                    # Compute edge masks on GPU
+-                    normal_edges = _normals_edge_cuda(normals, edge_normal_threshold, mask=normals_mask)
+-                    depth_edges = _depth_edge_cuda(depth_z, edge_depth_threshold, mask=final_mask_torch)
+-                    
+-                    # Combine
+-                    edge_mask = ~(depth_edges & normal_edges)
+-                    final_mask = final_mask & edge_mask.cpu().numpy()
+-                else:
+-                    # CPU version - original code
+-                    pred_pts3d = processed_output["pts3d"].cpu().numpy()  # (B, H, W, 3)
+-                    batch_size, height, width = final_mask.shape
+-
+-                    edge_masks = []
+-                    for b in range(batch_size):
+-                        batch_final_mask = final_mask[b]  # (H, W)
+-                        batch_pts3d = pred_pts3d[b]  # (H, W, 3)
+-
+-                        if batch_final_mask.any():  # Only compute if we have valid points
+-                            # Compute normals and normal-based edge mask
+-                            normals, normals_mask = points_to_normals(
+-                                batch_pts3d, mask=batch_final_mask
+-                            )
+-                            normal_edges = normals_edge(
+-                                normals, tol=edge_normal_threshold, mask=normals_mask
+-                            )
+-
+-                            # Compute depth-based edge mask
+-                            depth_z_np = (
+-                                processed_output["depth_z"][b].squeeze(-1).cpu().numpy()
+-                            )
+-                            depth_edges = depth_edge(
+-                                depth_z_np, rtol=edge_depth_threshold, mask=batch_final_mask
+-                            )
+-
+-                            # Combine both edge types
+-                            edge_mask = ~(depth_edges & normal_edges)
+-                            edge_masks.append(edge_mask)
+-                        else:
+-                            # No valid points, keep all as invalid
+-                            edge_masks.append(np.zeros_like(batch_final_mask, dtype=bool))
+-
+-                    # Stack batch edge masks and combine with final mask
+-                    edge_mask = np.stack(edge_masks, axis=0)  # (B, H, W)
+-                    final_mask = final_mask & edge_mask
++                # Get 3D points for edge computation
++                pred_pts3d = processed_output["pts3d"].cpu().numpy()  # (B, H, W, 3)
++                batch_size, height, width = final_mask.shape
++
++                edge_masks = []
++                for b in range(batch_size):
++                    batch_final_mask = final_mask[b]  # (H, W)
++                    batch_pts3d = pred_pts3d[b]  # (H, W, 3)
++
++                    if batch_final_mask.any():  # Only compute if we have valid points
++                        # Compute normals and normal-based edge mask
++                        normals, normals_mask = points_to_normals(
++                            batch_pts3d, mask=batch_final_mask
++                        )
++                        normal_edges = normals_edge(
++                            normals, tol=edge_normal_threshold, mask=normals_mask
++                        )
++
++                        # Compute depth-based edge mask
++                        depth_z = (
++                            processed_output["depth_z"][b].squeeze(-1).cpu().numpy()
++                        )
++                        depth_edges = depth_edge(
++                            depth_z, rtol=edge_depth_threshold, mask=batch_final_mask
++                        )
++
++                        # Combine both edge types
++                        edge_mask = ~(depth_edges & normal_edges)
++                        edge_masks.append(edge_mask)
++                    else:
++                        # No valid points, keep all as invalid
++                        edge_masks.append(np.zeros_like(batch_final_mask, dtype=bool))
++
++                # Stack batch edge masks and combine with final mask
++                edge_mask = np.stack(edge_masks, axis=0)  # (B, H, W)
++                final_mask = final_mask & edge_mask
+ 
+             # Apply final mask to dense geometry outputs if we have a mask
+             if final_mask is not None:

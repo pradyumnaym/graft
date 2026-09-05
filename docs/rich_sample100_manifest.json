@@ -1,0 +1,812 @@
+{
+ "_comment": [
+  "The 100 RICH frames that make up the GRAFT RICH benchmark ('rich-sample100').",
+  "All are from the RICH *test* split, subject 010.",
+  "Rebuild the split with: python scripts/build_rich_sample100.py --rich-root <RICH>",
+  "See docs/EVALUATION.md."
+ ],
+ "split": "test",
+ "n_frames": 100,
+ "frames": [
+  {
+   "sequence": "Gym_010_cooking1",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "cooking1",
+   "frame": "00032",
+   "camera": "03"
+  },
+  {
+   "sequence": "Gym_010_cooking1",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "cooking1",
+   "frame": "00090",
+   "camera": "05"
+  },
+  {
+   "sequence": "Gym_010_cooking1",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "cooking1",
+   "frame": "00123",
+   "camera": "04"
+  },
+  {
+   "sequence": "Gym_010_cooking1",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "cooking1",
+   "frame": "00190",
+   "camera": "01"
+  },
+  {
+   "sequence": "Gym_010_cooking1",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "cooking1",
+   "frame": "00280",
+   "camera": "03"
+  },
+  {
+   "sequence": "Gym_010_cooking1",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "cooking1",
+   "frame": "00281",
+   "camera": "05"
+  },
+  {
+   "sequence": "Gym_010_cooking1",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "cooking1",
+   "frame": "00298",
+   "camera": "01"
+  },
+  {
+   "sequence": "Gym_010_cooking1",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "cooking1",
+   "frame": "00323",
+   "camera": "04"
+  },
+  {
+   "sequence": "Gym_010_cooking1",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "cooking1",
+   "frame": "00324",
+   "camera": "01"
+  },
+  {
+   "sequence": "Gym_010_cooking1",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "cooking1",
+   "frame": "00464",
+   "camera": "01"
+  },
+  {
+   "sequence": "Gym_010_cooking1",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "cooking1",
+   "frame": "00492",
+   "camera": "01"
+  },
+  {
+   "sequence": "Gym_010_cooking1",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "cooking1",
+   "frame": "00550",
+   "camera": "03"
+  },
+  {
+   "sequence": "Gym_010_cooking1",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "cooking1",
+   "frame": "00587",
+   "camera": "03"
+  },
+  {
+   "sequence": "Gym_010_cooking1",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "cooking1",
+   "frame": "00661",
+   "camera": "01"
+  },
+  {
+   "sequence": "Gym_010_cooking1",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "cooking1",
+   "frame": "00707",
+   "camera": "03"
+  },
+  {
+   "sequence": "Gym_010_dips1",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "dips1",
+   "frame": "00116",
+   "camera": "05"
+  },
+  {
+   "sequence": "Gym_010_dips1",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "dips1",
+   "frame": "00142",
+   "camera": "00"
+  },
+  {
+   "sequence": "Gym_010_dips1",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "dips1",
+   "frame": "00151",
+   "camera": "04"
+  },
+  {
+   "sequence": "Gym_010_dips1",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "dips1",
+   "frame": "00180",
+   "camera": "00"
+  },
+  {
+   "sequence": "Gym_010_dips1",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "dips1",
+   "frame": "00236",
+   "camera": "00"
+  },
+  {
+   "sequence": "Gym_010_dips1",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "dips1",
+   "frame": "00250",
+   "camera": "00"
+  },
+  {
+   "sequence": "Gym_010_dips1",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "dips1",
+   "frame": "00335",
+   "camera": "00"
+  },
+  {
+   "sequence": "Gym_010_dips1",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "dips1",
+   "frame": "00420",
+   "camera": "00"
+  },
+  {
+   "sequence": "Gym_010_dips1",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "dips1",
+   "frame": "00494",
+   "camera": "00"
+  },
+  {
+   "sequence": "Gym_010_dips1",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "dips1",
+   "frame": "00508",
+   "camera": "00"
+  },
+  {
+   "sequence": "Gym_010_dips2",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "dips2",
+   "frame": "00010",
+   "camera": "05"
+  },
+  {
+   "sequence": "Gym_010_dips2",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "dips2",
+   "frame": "00012",
+   "camera": "04"
+  },
+  {
+   "sequence": "Gym_010_dips2",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "dips2",
+   "frame": "00020",
+   "camera": "02"
+  },
+  {
+   "sequence": "Gym_010_dips2",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "dips2",
+   "frame": "00096",
+   "camera": "02"
+  },
+  {
+   "sequence": "Gym_010_dips2",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "dips2",
+   "frame": "00129",
+   "camera": "01"
+  },
+  {
+   "sequence": "Gym_010_dips2",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "dips2",
+   "frame": "00134",
+   "camera": "02"
+  },
+  {
+   "sequence": "Gym_010_dips2",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "dips2",
+   "frame": "00195",
+   "camera": "01"
+  },
+  {
+   "sequence": "Gym_010_dips2",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "dips2",
+   "frame": "00484",
+   "camera": "05"
+  },
+  {
+   "sequence": "Gym_010_dips2",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "dips2",
+   "frame": "00532",
+   "camera": "05"
+  },
+  {
+   "sequence": "Gym_010_dips2",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "dips2",
+   "frame": "00561",
+   "camera": "02"
+  },
+  {
+   "sequence": "Gym_010_lunge1",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "lunge1",
+   "frame": "00220",
+   "camera": "01"
+  },
+  {
+   "sequence": "Gym_010_lunge1",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "lunge1",
+   "frame": "00230",
+   "camera": "01"
+  },
+  {
+   "sequence": "Gym_010_lunge2",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "lunge2",
+   "frame": "00027",
+   "camera": "00"
+  },
+  {
+   "sequence": "Gym_010_lunge2",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "lunge2",
+   "frame": "00056",
+   "camera": "02"
+  },
+  {
+   "sequence": "Gym_010_lunge2",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "lunge2",
+   "frame": "00094",
+   "camera": "00"
+  },
+  {
+   "sequence": "Gym_010_lunge2",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "lunge2",
+   "frame": "00129",
+   "camera": "04"
+  },
+  {
+   "sequence": "Gym_010_lunge2",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "lunge2",
+   "frame": "00241",
+   "camera": "02"
+  },
+  {
+   "sequence": "Gym_010_mountainclimber1",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "mountainclimber1",
+   "frame": "00147",
+   "camera": "05"
+  },
+  {
+   "sequence": "Gym_010_mountainclimber1",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "mountainclimber1",
+   "frame": "00159",
+   "camera": "04"
+  },
+  {
+   "sequence": "Gym_010_mountainclimber1",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "mountainclimber1",
+   "frame": "00342",
+   "camera": "05"
+  },
+  {
+   "sequence": "Gym_010_mountainclimber1",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "mountainclimber1",
+   "frame": "00453",
+   "camera": "05"
+  },
+  {
+   "sequence": "Gym_010_mountainclimber1",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "mountainclimber1",
+   "frame": "00497",
+   "camera": "03"
+  },
+  {
+   "sequence": "Gym_010_mountainclimber2",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "mountainclimber2",
+   "frame": "00217",
+   "camera": "03"
+  },
+  {
+   "sequence": "Gym_010_mountainclimber2",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "mountainclimber2",
+   "frame": "00311",
+   "camera": "04"
+  },
+  {
+   "sequence": "Gym_010_mountainclimber2",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "mountainclimber2",
+   "frame": "00335",
+   "camera": "04"
+  },
+  {
+   "sequence": "Gym_010_pushup1",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "pushup1",
+   "frame": "00264",
+   "camera": "03"
+  },
+  {
+   "sequence": "Gym_010_pushup1",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "pushup1",
+   "frame": "00341",
+   "camera": "04"
+  },
+  {
+   "sequence": "Gym_010_pushup2",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "pushup2",
+   "frame": "00024",
+   "camera": "02"
+  },
+  {
+   "sequence": "Gym_010_pushup2",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "pushup2",
+   "frame": "00051",
+   "camera": "02"
+  },
+  {
+   "sequence": "Gym_010_pushup2",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "pushup2",
+   "frame": "00058",
+   "camera": "03"
+  },
+  {
+   "sequence": "Gym_010_pushup2",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "pushup2",
+   "frame": "00153",
+   "camera": "02"
+  },
+  {
+   "sequence": "Gym_010_pushup2",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "pushup2",
+   "frame": "00180",
+   "camera": "03"
+  },
+  {
+   "sequence": "Gym_010_pushup2",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "pushup2",
+   "frame": "00204",
+   "camera": "04"
+  },
+  {
+   "sequence": "Gym_010_pushup2",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "pushup2",
+   "frame": "00375",
+   "camera": "02"
+  },
+  {
+   "sequence": "Gym_010_pushup2",
+   "scene": "Gym",
+   "subject": "010",
+   "activity": "pushup2",
+   "frame": "00401",
+   "camera": "05"
+  },
+  {
+   "sequence": "LectureHall_010_plankjack1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "plankjack1",
+   "frame": "00020",
+   "camera": "04"
+  },
+  {
+   "sequence": "LectureHall_010_plankjack1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "plankjack1",
+   "frame": "00047",
+   "camera": "00"
+  },
+  {
+   "sequence": "LectureHall_010_plankjack1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "plankjack1",
+   "frame": "00068",
+   "camera": "02"
+  },
+  {
+   "sequence": "LectureHall_010_plankjack1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "plankjack1",
+   "frame": "00118",
+   "camera": "02"
+  },
+  {
+   "sequence": "LectureHall_010_plankjack1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "plankjack1",
+   "frame": "00134",
+   "camera": "02"
+  },
+  {
+   "sequence": "LectureHall_010_plankjack1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "plankjack1",
+   "frame": "00181",
+   "camera": "00"
+  },
+  {
+   "sequence": "LectureHall_010_plankjack1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "plankjack1",
+   "frame": "00192",
+   "camera": "02"
+  },
+  {
+   "sequence": "LectureHall_010_plankjack1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "plankjack1",
+   "frame": "00254",
+   "camera": "04"
+  },
+  {
+   "sequence": "LectureHall_010_plankjack1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "plankjack1",
+   "frame": "00365",
+   "camera": "04"
+  },
+  {
+   "sequence": "LectureHall_010_plankjack1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "plankjack1",
+   "frame": "00369",
+   "camera": "04"
+  },
+  {
+   "sequence": "LectureHall_010_plankjack1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "plankjack1",
+   "frame": "00417",
+   "camera": "00"
+  },
+  {
+   "sequence": "LectureHall_010_plankjack1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "plankjack1",
+   "frame": "00499",
+   "camera": "02"
+  },
+  {
+   "sequence": "LectureHall_010_sidebalancerun1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "sidebalancerun1",
+   "frame": "00040",
+   "camera": "01"
+  },
+  {
+   "sequence": "LectureHall_010_sidebalancerun1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "sidebalancerun1",
+   "frame": "00051",
+   "camera": "02"
+  },
+  {
+   "sequence": "LectureHall_010_sidebalancerun1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "sidebalancerun1",
+   "frame": "00084",
+   "camera": "00"
+  },
+  {
+   "sequence": "LectureHall_010_sidebalancerun1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "sidebalancerun1",
+   "frame": "00090",
+   "camera": "00"
+  },
+  {
+   "sequence": "LectureHall_010_sidebalancerun1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "sidebalancerun1",
+   "frame": "00111",
+   "camera": "00"
+  },
+  {
+   "sequence": "LectureHall_010_sidebalancerun1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "sidebalancerun1",
+   "frame": "00122",
+   "camera": "04"
+  },
+  {
+   "sequence": "LectureHall_010_sidebalancerun1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "sidebalancerun1",
+   "frame": "00123",
+   "camera": "04"
+  },
+  {
+   "sequence": "LectureHall_010_sidebalancerun1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "sidebalancerun1",
+   "frame": "00124",
+   "camera": "01"
+  },
+  {
+   "sequence": "LectureHall_010_sidebalancerun1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "sidebalancerun1",
+   "frame": "00192",
+   "camera": "04"
+  },
+  {
+   "sequence": "LectureHall_010_sidebalancerun1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "sidebalancerun1",
+   "frame": "00213",
+   "camera": "01"
+  },
+  {
+   "sequence": "LectureHall_010_sidebalancerun1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "sidebalancerun1",
+   "frame": "00222",
+   "camera": "01"
+  },
+  {
+   "sequence": "LectureHall_010_sidebalancerun1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "sidebalancerun1",
+   "frame": "00246",
+   "camera": "00"
+  },
+  {
+   "sequence": "LectureHall_010_sidebalancerun1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "sidebalancerun1",
+   "frame": "00309",
+   "camera": "00"
+  },
+  {
+   "sequence": "LectureHall_010_sidebalancerun1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "sidebalancerun1",
+   "frame": "00371",
+   "camera": "01"
+  },
+  {
+   "sequence": "LectureHall_010_sidebalancerun1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "sidebalancerun1",
+   "frame": "00385",
+   "camera": "00"
+  },
+  {
+   "sequence": "LectureHall_010_sidebalancerun1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "sidebalancerun1",
+   "frame": "00407",
+   "camera": "01"
+  },
+  {
+   "sequence": "LectureHall_010_sidebalancerun1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "sidebalancerun1",
+   "frame": "00437",
+   "camera": "01"
+  },
+  {
+   "sequence": "LectureHall_010_sidebalancerun1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "sidebalancerun1",
+   "frame": "00440",
+   "camera": "01"
+  },
+  {
+   "sequence": "LectureHall_010_sidebalancerun1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "sidebalancerun1",
+   "frame": "00453",
+   "camera": "02"
+  },
+  {
+   "sequence": "LectureHall_010_sidebalancerun1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "sidebalancerun1",
+   "frame": "00477",
+   "camera": "00"
+  },
+  {
+   "sequence": "LectureHall_010_sidebalancerun1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "sidebalancerun1",
+   "frame": "00505",
+   "camera": "02"
+  },
+  {
+   "sequence": "LectureHall_010_sidebalancerun1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "sidebalancerun1",
+   "frame": "00511",
+   "camera": "02"
+  },
+  {
+   "sequence": "LectureHall_010_sidebalancerun1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "sidebalancerun1",
+   "frame": "00603",
+   "camera": "04"
+  },
+  {
+   "sequence": "LectureHall_010_sidebalancerun1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "sidebalancerun1",
+   "frame": "00683",
+   "camera": "02"
+  },
+  {
+   "sequence": "LectureHall_010_sidebalancerun1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "sidebalancerun1",
+   "frame": "00721",
+   "camera": "01"
+  },
+  {
+   "sequence": "LectureHall_010_sidebalancerun1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "sidebalancerun1",
+   "frame": "00735",
+   "camera": "04"
+  },
+  {
+   "sequence": "LectureHall_010_sidebalancerun1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "sidebalancerun1",
+   "frame": "00740",
+   "camera": "01"
+  },
+  {
+   "sequence": "LectureHall_010_sidebalancerun1",
+   "scene": "LectureHall",
+   "subject": "010",
+   "activity": "sidebalancerun1",
+   "frame": "00829",
+   "camera": "04"
+  }
+ ]
+}

@@ -1,0 +1,159 @@
+
+
+class NoPeopleDetected(RuntimeError):
+    """Raised by :meth:`GRAFTModel.predict` when the pose estimator finds nobody.
+
+    Subclasses ``RuntimeError`` because the benchmark harness catches that to skip
+    a frame; keep it that way.
+    """
+
+
+@dataclass
+class GRAFTConfig:
+    """Architecture of a GRAFT checkpoint.
+
+    Only two fields differ between the two published checkpoints
+    (``drop_vis_feats`` and ``flat_hand_mean``); the rest are fixed by the
+    trained weights and should not be changed when loading one.
+    """
+
+    #: Side of the square feature-sampling window, in feature-map cells.
+    sample_radius: int = 3
+    #: Width of the refinement transformer.
+    dim: int = 512
+    #: Probability of hiding a context point during training. Inert at eval.
+    feedback_dropout_prob: float = 0.3
+    #: Probability of zeroing a query point's geometry during training. Inert at eval.
+    geometry_dropout_prob: float = 0.0
+    #: Add 64 extra surface tokens. Off in both published checkpoints.
+    additional_tokens: bool = False
+    #: How the NLF initialisation is brought onto the scene point map:
+    #: ``'scale'`` (published) rescales the body about the camera;
+    #: ``'transl'`` only shifts it.
+    alignment_type: str = "scale"
+    #: Blind the model to image features (the "without visual features" ablation).
+    #: Sample points are pushed out of bounds, so the transformer sees geometry only.
+    drop_vis_feats: bool = False
+    #: SMPL-X hand-mean convention the checkpoint was trained under. This must
+    #: match the checkpoint: it changes what a zero hand pose means.
+    flat_hand_mean: bool = True
+    #: Run the refinement transformer in bfloat16. Off for the published numbers.
+    use_bf16: bool = False
+
+
+@dataclass
+class GRAFTOutput:
+    """What :meth:`GRAFTModel.predict` returns for one image."""
+
+    #: SMPL-X parameters in the scene frame, each ``(n_people, ...)``:
+    #: ``betas, transl, global_orient, body_pose, left_hand_pose,
+    #: right_hand_pose, jaw_pose, expression``.
+    smplx: dict[str, torch.Tensor]
+    #: Posed SMPL-X vertices, ``(n_people, 10475, 3)``, scene frame, metres.
+    vertices: torch.Tensor
+    #: SMPL-X joints, ``(n_people, 127, 3)``, scene frame, metres.
+    joints: torch.Tensor
+    #: Metric scene point map, ``(H, W, 3)``, camera frame, metres.
+    points: torch.Tensor
+    #: Camera intrinsics recovered from the point map, ``(3, 3)``, pixels.
+    K: torch.Tensor
+    #: The NLF initialisation the refinement started from, same layout as ``smplx``.
+    init: dict[str, torch.Tensor]
+    #: Number of people found.
+    n_people: int
+
+    def __len__(self) -> int:
+        return self.n_people
+
+
+class GRAFTModel(torch.nn.Module):
+    """Human-scene reconstruction from a single image.
+
+    A learned human-scene-interaction prior: it predicts iterative,
+    geometry-grounded refinements of an off-the-shelf pose estimate.
+
+    Construct with :meth:`from_pretrained` and call :meth:`predict`. The
+    lower-level :meth:`infer` takes the batch dictionary directly and is what the
+    evaluation harness uses.
+
+    Frozen components (MapAnything, NLF, MoGe, WiLoR, SMPL-X) live in ``self._ext``
+    rather than as submodules, so a checkpoint holds only GRAFT's own weights. They
+    load lazily via the ``require_*`` methods.
+    """
+
+    def __init__(
+        self,
+        config: Optional[GRAFTConfig] = None,
+        **overrides: Any,
+    ):
+        super().__init__()
+        cfg = config if config is not None else GRAFTConfig()
+        if overrides:
+            cfg = GRAFTConfig(**{**vars(cfg), **overrides})
+        self.config = cfg
+
+        # Mirrored onto the instance because the verbatim forward code reads them
+        # as plain attributes.
+        self.sample_radius = cfg.sample_radius
+        self.dim = cfg.dim
+        self.feedback_dropout_prob = cfg.feedback_dropout_prob
+        self.geometry_dropout_prob = cfg.geometry_dropout_prob
+        self.additional_tokens = cfg.additional_tokens
+        self.alignment_type = cfg.alignment_type
+        self.drop_vis_feats = cfg.drop_vis_feats
+        self.flat_hand_mean = cfg.flat_hand_mean
+        self.use_bf16 = cfg.use_bf16
+
+        self._ext: dict[str, Any] = {}
+        self._ext['model_ma'] = MapAnything.from_pretrained("facebook/map-anything").eval()
+        self._ext['model_nlf'] = None    # lazily loaded by require_nlf
+        self._ext['model_moge'] = None   # lazily loaded by require_moge
+        smplx_neutral = str(paths.require(paths.smplx_neutral(), "SMPL-X neutral body model"))
+        self._ext['smplx_aa'] = smplx.SMPLX(
+            smplx_neutral, num_betas=10, use_pca=False, flat_hand_mean=cfg.flat_hand_mean)
+        self._ext['smplx_rotmat'] = smplx.SMPLXLayer(
+            smplx_neutral, num_betas=10, use_pca=False)
+
+        self.sampler = FusedFeatureSampler(
+            output_dims=512, input_dims=[1536] * 4, num_views=2,
+            sample_radius=cfg.sample_radius, use_embeddings=True)
+
+        self.features_xyz = LearnableFourierFeatures(in_features=3, out_features=64, concat_input=True)
+        self.features_vec = LearnableFourierFeatures(in_features=3, out_features=64, concat_input=True)
+        self.features_norm = LearnableFourierFeatures(in_features=3, out_features=64, concat_input=True)
+
+        self.mlp_body = MLP([207, 512, 512], activation=torch.nn.GELU)
+        self.mlp_point = MLP([67 * 3, 16, 16], activation=torch.nn.GELU)
+        self.mlp_hand = MLP([16 * 5 + 90, 512, 512], activation=torch.nn.GELU)
+        self.mlp_full = MLP([451, 512, 512], activation=torch.nn.GELU)
+
+        self.n_tokens = 24
+        if cfg.additional_tokens:
+            self.mlp_addnl = MLP([67 * 3, 512, 512], activation=torch.nn.GELU)
+            self.n_tokens += 64
+
+        self.embeddings = torch.nn.Parameter(torch.randn(1, self.n_tokens, 512))
+        self.dec_body_pose = MLP([512, 256, 6], activation=torch.nn.GELU)
+        self.dec_pos = MLP([512, 256, 3], activation=torch.nn.GELU)
+        self.dec_global_orient = MLP([512, 256, 6], activation=torch.nn.GELU)
+        self.dec_hand = MLP([512, 256, 90], activation=torch.nn.GELU)
+        self.dec_betas = MLP([512, 256, 10], activation=torch.nn.GELU)
+        self.dec_scale = MLP([512, 256, 1], activation=torch.nn.GELU)
+
+        # ImageNet statistics: MapAnything's DINOv2 encoder expects them.
+        self.register_buffer('mean', torch.tensor([0.485, 0.456, 0.406]).view(1, 3, 1, 1))
+        self.register_buffer('std', torch.tensor([0.229, 0.224, 0.225]).view(1, 3, 1, 1))
+
+        # depth=5 and heads=dim//64 are fixed by the trained weights.
+        self.transformer = TransformerCrossAttn(
+            dim=cfg.dim,
+            depth=5,
+            heads=cfg.dim // 64,
+            dim_head=64,
+            mlp_dim=cfg.dim,
+            dropout=0.0,
+            norm="layer",
+            norm_cond_dim=-1,
+            context_dim=cfg.dim,
+        )
+
