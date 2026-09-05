@@ -151,19 +151,6 @@ are fewer than the totals (178 and 100) where no single-person prediction is mad
 
 ---
 
-## Provenance
-
-`graft/` is **generated** from the research implementation the published results
-were produced with: `tools/build_all.py` copies each numerical method by exact AST
-source range, applies a small table of explicit edits (imports, paths, removing
-training-only branches), and runs static checks over the result. So the released
-forward pass is the same code, not a re-implementation.
-
-To change something, edit the relevant script in `tools/` and re-run
-`python tools/build_all.py`; a test fails if `graft/` is edited by hand.
-
----
-
 ## Performance
 
 ```bash
