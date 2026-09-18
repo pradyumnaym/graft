@@ -16,7 +16,7 @@ Quick start::
     from graft import GRAFTModel
 
     model = GRAFTModel.from_pretrained("graft").cuda().eval()
-    out = model.predict(image, scene_image=empty_scene)
+    out = model.predict(image, scene_image=empty_scene, person_mask=mask)
     out.vertices                               # (n_people, 10475, 3), scene frame
     out.smplx                                  # dict of SMPL-X parameters
     out.points                                 # (H, W, 3) scene point map
@@ -51,7 +51,7 @@ from .ops.geometry import (
     project_points_torch_batch,
 )
 from .ops.head_anchor import head_anchor_points
-from .ops.images import ImageLike, prepare_image, to_pil
+from .ops.images import ImageLike, prepare_image, prepare_mask, to_pil
 from .ops.joint_names import JOINT_NAMES
 from .ops.perf import enable_fast_gemm
 from .ops.smplx_params import (
@@ -416,13 +416,20 @@ class GRAFTModel(torch.nn.Module):
             model_output[1]['pts3d'] = points[1]
             model_output[1]['intrinsics'] = intrinsics[1]
 
-            if 'non_human_mask' in batch:
-                model_output[1]['pts3d'] = align_points_robust_batched(
-                    model_output[1]['pts3d'],
-                    model_output[0]['pts3d'],
-                    mask=batch['non_human_mask'] & torch.isfinite(model_output[1]['pts3d']).all(dim=-1) & \
-                            torch.isfinite(model_output[0]['pts3d']).all(dim=-1)
+            # MoGe predicts the two views independently, so the person view has to be
+            # aligned onto the scene view, on the pixels no person covers. Without the
+            # mask that alignment would be skipped, so the mask is required.
+            if 'non_human_mask' not in batch:
+                raise ValueError(
+                    "use_moge=True needs batch['non_human_mask'] ((B, H, W) bool, True "
+                    "where no person is) to align the person view onto the scene view."
                 )
+            model_output[1]['pts3d'] = align_points_robust_batched(
+                model_output[1]['pts3d'],
+                model_output[0]['pts3d'],
+                mask=batch['non_human_mask'] & torch.isfinite(model_output[1]['pts3d']).all(dim=-1) & \
+                        torch.isfinite(model_output[0]['pts3d']).all(dim=-1)
+            )
                 
             # set non-finite points to 0 to prevent issues in later processing - they will be masked out anyway
             model_output[1]['pts3d'][~torch.isfinite(model_output[1]['pts3d']).all(dim=-1)] = 0.0
@@ -1031,6 +1038,7 @@ class GRAFTModel(torch.nn.Module):
         image: "ImageLike",
         scene_image: Optional["ImageLike"] = None,
         *,
+        person_mask: "ImageLike",
         num_iters: int = 3,
         refine_hands: bool = False,
     ) -> GRAFTOutput:
@@ -1045,6 +1053,12 @@ class GRAFTModel(torch.nn.Module):
                 synthesises one if you have no empty-scene photograph. ``None``
                 reuses ``image`` itself, which is a fallback rather than a
                 supported setting.
+            person_mask: where the people are in ``image``, nonzero (or ``True``)
+                on a person. Same size as ``image``; a path, PIL image, HW array or
+                tensor. The scene geometry comes from MoGe, which predicts the two
+                views independently; the pixels outside this mask are what the
+                person view is aligned onto the scene view with, so it is required.
+                ``graft.scene.person_mask`` computes one.
             num_iters: refinement iterations. 3 is what the paper reports.
             refine_hands: replace the hand poses with WiLoR's. Off for the
                 reported metrics.
@@ -1063,10 +1077,16 @@ class GRAFTModel(torch.nn.Module):
                 f"image and scene_image must have the same aspect ratio; after "
                 f"preparation they are {tuple(image_t.shape[2:])} and {tuple(scene_t.shape[2:])}."
             )
+        mask_t = prepare_mask(to_pil(person_mask).convert("L"), device=device)
+        if mask_t.shape[1:] != image_t.shape[2:]:
+            raise ValueError(
+                f"person_mask must have the same aspect ratio as image; after "
+                f"preparation they are {tuple(mask_t.shape[1:])} and {tuple(image_t.shape[2:])}."
+            )
 
         try:
             out = self.infer(
-                {"image": image_t, "scene_image": scene_t},
+                {"image": image_t, "scene_image": scene_t, "non_human_mask": ~(mask_t > 0)},
                 num_iters=num_iters,
                 # MoGe supplies the scene geometry -- `infer`'s own default, and what
                 # the paper's qualitative results were produced with. The benchmarks

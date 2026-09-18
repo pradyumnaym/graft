@@ -55,6 +55,7 @@
         image: "ImageLike",
         scene_image: Optional["ImageLike"] = None,
         *,
+        person_mask: "ImageLike",
         num_iters: int = 3,
         refine_hands: bool = False,
     ) -> GRAFTOutput:
@@ -69,6 +70,12 @@
                 synthesises one if you have no empty-scene photograph. ``None``
                 reuses ``image`` itself, which is a fallback rather than a
                 supported setting.
+            person_mask: where the people are in ``image``, nonzero (or ``True``)
+                on a person. Same size as ``image``; a path, PIL image, HW array or
+                tensor. The scene geometry comes from MoGe, which predicts the two
+                views independently; the pixels outside this mask are what the
+                person view is aligned onto the scene view with, so it is required.
+                ``graft.scene.person_mask`` computes one.
             num_iters: refinement iterations. 3 is what the paper reports.
             refine_hands: replace the hand poses with WiLoR's. Off for the
                 reported metrics.
@@ -87,10 +94,16 @@
                 f"image and scene_image must have the same aspect ratio; after "
                 f"preparation they are {tuple(image_t.shape[2:])} and {tuple(scene_t.shape[2:])}."
             )
+        mask_t = prepare_mask(to_pil(person_mask).convert("L"), device=device)
+        if mask_t.shape[1:] != image_t.shape[2:]:
+            raise ValueError(
+                f"person_mask must have the same aspect ratio as image; after "
+                f"preparation they are {tuple(mask_t.shape[1:])} and {tuple(image_t.shape[2:])}."
+            )
 
         try:
             out = self.infer(
-                {"image": image_t, "scene_image": scene_t},
+                {"image": image_t, "scene_image": scene_t, "non_human_mask": ~(mask_t > 0)},
                 num_iters=num_iters,
                 # MoGe supplies the scene geometry -- `infer`'s own default, and what
                 # the paper's qualitative results were produced with. The benchmarks

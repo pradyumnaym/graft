@@ -36,8 +36,11 @@ reproduces the paper's PROX and RICH numbers.
 ```python
 from graft import GRAFTModel
 
+from graft.scene import person_mask
+
 model = GRAFTModel.from_pretrained("graft").cuda().eval()
-out = model.predict("photo.jpg", scene_image="empty_room.jpg")
+out = model.predict("photo.jpg", scene_image="empty_room.jpg",
+                    person_mask=person_mask("photo.jpg"))
 
 out.vertices     # (n_people, 10475, 3) SMPL-X vertices, scene frame, metres
 out.smplx        # dict of SMPL-X parameters
@@ -107,15 +110,22 @@ of the same scene *without* them, which is where the geometry comes from. Both
 benchmarks supply a real one. For your own images, best first:
 
 ```python
-model.predict("photo.jpg", scene_image="empty_room.jpg")   # a real empty-scene photo
+from graft.scene import person_mask, remove_people
+mask = person_mask("photo.jpg")                            # where the people are
 
-from graft.scene import remove_people                      # or inpaint them out
-model.predict("photo.jpg", scene_image=remove_people("photo.jpg"))
-
-model.predict("photo.jpg")                                 # fallback: no scene view
+model.predict("photo.jpg", scene_image="empty_room.jpg", person_mask=mask)   # a real empty-scene photo
+model.predict("photo.jpg", scene_image=remove_people("photo.jpg", mask),     # or inpaint them out
+              person_mask=mask)
+model.predict("photo.jpg", person_mask=mask)                                 # fallback: no scene view
 ```
 
-Inpainting needs the `demo` extra, plus Hub access to the gated
+`person_mask` is required. The scene geometry comes from MoGe, which predicts the
+two views independently, and the person view is aligned onto the scene view on the
+pixels no person covers, so without the mask the two views are not aligned. Any
+mask of the people in `photo.jpg` works; `graft.scene.person_mask` segments one
+with SAM and needs the `demo` extra.
+
+Inpainting also needs the `demo` extra, plus Hub access to the gated
 [`FLUX.1-dev`](https://huggingface.co/black-forest-labs/FLUX.1-dev) and
 [`Omnieraser`](https://huggingface.co/theSure/Omnieraser) (`huggingface-cli login`).
 `remove_people` sizes FLUX's 31 GiB to the free VRAM automatically — it fits a 24 GiB

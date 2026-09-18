@@ -6,10 +6,11 @@ bodies against comes from. Both published benchmarks supply a real photograph fo
 the second one. In the wild you usually do not have it, so this module makes one:
 segment the people, then inpaint them out.
 
-    from graft.scene import remove_people
+    from graft.scene import person_mask, remove_people
 
-    scene = remove_people("photo.jpg")
-    out = model.predict("photo.jpg", scene_image=scene)
+    mask = person_mask("photo.jpg")
+    scene = remove_people("photo.jpg", mask)
+    out = model.predict("photo.jpg", scene_image=scene, person_mask=mask)
 
 The dependencies here are heavier than GRAFT's own (a segmentation model plus a
 diffusion inpainter) and are therefore optional: `pip install -e ".[demo]"`.

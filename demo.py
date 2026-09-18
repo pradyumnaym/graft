@@ -12,6 +12,7 @@ Writes, per input image:
     <name>_bodies.obj     the posed SMPL-X meshes, in the scene's camera frame
     <name>_scene.ply      the scene point cloud GRAFT fitted against
     <name>_smplx.npz      the SMPL-X parameters, (n_people, ...) arrays
+    <name>_person_mask.png the person mask GRAFT aligned the two views with
     <name>_scene_used.png the empty-scene view that was used (with --inpaint-scene)
 
 The two meshes share one coordinate frame, so loading both into any viewer shows
@@ -32,7 +33,7 @@ import click
                    "this is where the geometry comes from.")
 @click.option("--inpaint-scene", is_flag=True,
               help="Synthesise the empty-scene view by segmenting and inpainting the "
-                   "people out (needs the 'demo' extra).")
+                   "people out.")
 @click.option("--refine-hands", is_flag=True,
               help="Refine hand poses with WiLoR (needs the 'demo' extra).")
 @click.option("--model", "model_name", default="graft", show_default=True,
@@ -52,6 +53,7 @@ def main(images, scene_image, inpaint_scene, refine_hands, model_name,
 
     from graft import GRAFTModel
     from graft.export import write_glb
+    from graft.scene import person_mask
 
     if scene_image and inpaint_scene:
         raise SystemExit("Pass either --scene-image or --inpaint-scene, not both.")
@@ -71,15 +73,20 @@ def main(images, scene_image, inpaint_scene, refine_hands, model_name,
         path = Path(path)
         stem = path.stem
         scene = scene_image
+        # The person view is aligned onto the scene view on the pixels outside this
+        # mask, so it is needed whichever way the scene view is obtained.
+        click.echo(f"{stem}: segmenting the people…")
+        mask = person_mask(path)
+        mask.save(out / f"{stem}_person_mask.png")
         if inpaint_scene:
             from graft.scene import remove_people
             click.echo(f"{stem}: inpainting people out to build the scene view…")
-            scene = remove_people(path, device=device)
+            scene = remove_people(path, mask, device=device)
             scene.save(out / f"{stem}_scene_used.png")
 
         click.echo(f"{stem}: running GRAFT…")
-        result = model.predict(path, scene_image=scene, num_iters=num_iters,
-                               refine_hands=refine_hands)
+        result = model.predict(path, scene_image=scene, person_mask=mask,
+                               num_iters=num_iters, refine_hands=refine_hands)
         if len(result) == 0:
             click.echo(f"{stem}: no people detected, skipping.", err=True)
             continue

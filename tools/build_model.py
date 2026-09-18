@@ -13,6 +13,10 @@ What changes, and why:
     with them). Inference never takes it. The kept else-body is asserted
     character-identical after dedent.
   * `process_input` also loses an env-var-gated debug print (`SCENEFIT_DEBUG_NLFBAD`).
+  * `process_input`'s MoGe-geometry branch (`use_moge=True`) requires
+    `batch['non_human_mask']` instead of silently skipping the person-to-scene
+    alignment when it is absent. MoGe predicts the two views independently, so
+    they need aligning. The alignment itself is unchanged.
   * Dropped members: `require_renderer` (the depth renderer was replaced by the
     head ray-anchor and is unreferenced), `scale_smplx_data_with_scale` (dead --
     it calls a `fit_smplx_to_vertices_joints` that does not exist on the class).
@@ -52,6 +56,9 @@ def build_process_input():
     s = s.replace(UNCERTAINTY_COMMENT, "")
     s = methods.drop_if(s, "'uncertainty' in smplx_params_nlf[0]")
     assert "uncertainty" not in s
+    # The MoGe-geometry branch must not run without the person mask.
+    assert s.count(MOGE_MASK_OLD) == 1, "source changed upstream: MoGe mask block"
+    s = s.replace(MOGE_MASK_OLD, MOGE_MASK_NEW)
     assert "boxes_xywh" not in s and "estimate_parametric_fast" not in s
     assert "os.environ" not in s
     return s
@@ -64,6 +71,33 @@ UNCERTAINTY_COMMENT = """
         # uncertainty-conditioned temporal write gate (gate_uncertainty_input); mirrors the
         # vgraft input-smoother surfacing (PATCHES.md #4). Additive: unread unless enabled.
 """[1:]
+
+MOGE_MASK_OLD = '''\
+            if 'non_human_mask' in batch:
+                model_output[1]['pts3d'] = align_points_robust_batched(
+                    model_output[1]['pts3d'],
+                    model_output[0]['pts3d'],
+                    mask=batch['non_human_mask'] & torch.isfinite(model_output[1]['pts3d']).all(dim=-1) & \\
+                            torch.isfinite(model_output[0]['pts3d']).all(dim=-1)
+                )
+'''
+
+MOGE_MASK_NEW = '''\
+            # MoGe predicts the two views independently, so the person view has to be
+            # aligned onto the scene view, on the pixels no person covers. Without the
+            # mask that alignment would be skipped, so the mask is required.
+            if 'non_human_mask' not in batch:
+                raise ValueError(
+                    "use_moge=True needs batch['non_human_mask'] ((B, H, W) bool, True "
+                    "where no person is) to align the person view onto the scene view."
+                )
+            model_output[1]['pts3d'] = align_points_robust_batched(
+                model_output[1]['pts3d'],
+                model_output[0]['pts3d'],
+                mask=batch['non_human_mask'] & torch.isfinite(model_output[1]['pts3d']).all(dim=-1) & \\
+                        torch.isfinite(model_output[0]['pts3d']).all(dim=-1)
+            )
+'''
 
 # Comments that describe machinery outside this release (the video/temporal model).
 COMMENT_EDITS = [
@@ -137,7 +171,7 @@ Quick start::
     from graft import GRAFTModel
 
     model = GRAFTModel.from_pretrained("graft").cuda().eval()
-    out = model.predict(image, scene_image=empty_scene)
+    out = model.predict(image, scene_image=empty_scene, person_mask=mask)
     out.vertices                               # (n_people, 10475, 3), scene frame
     out.smplx                                  # dict of SMPL-X parameters
     out.points                                 # (H, W, 3) scene point map
@@ -172,7 +206,7 @@ from .ops.geometry import (
     project_points_torch_batch,
 )
 from .ops.head_anchor import head_anchor_points
-from .ops.images import ImageLike, prepare_image, to_pil
+from .ops.images import ImageLike, prepare_image, prepare_mask, to_pil
 from .ops.joint_names import JOINT_NAMES
 from .ops.perf import enable_fast_gemm
 from .ops.smplx_params import (

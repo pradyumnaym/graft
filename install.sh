@@ -34,9 +34,9 @@ pip install -e .
 
 if (( MINIMAL )); then
   echo
-  echo "Inference only, as asked. The benchmark harness (graft.eval), hand"
-  echo "refinement and scene inpainting are not installed; add them later with"
-  echo "a plain \`bash install.sh\`."
+  echo "Inference only, as asked. The benchmark harness (graft.eval), and the"
+  echo "demo's person segmentation, hand refinement and scene inpainting are not"
+  echo "installed; add them later with a plain \`bash install.sh\`."
   echo
   echo "Now fetch the weights:   python scripts/download_assets.py"
   echo "Then check the install:  python scripts/check_install.py"
@@ -66,7 +66,7 @@ if (( ${#failed[@]} )); then
   for extra in "${failed[@]}"; do
     case "$extra" in
       eval) echo "  eval  -- evaluate.py and graft.eval will not run." ;;
-      demo) echo "  demo  -- --refine-hands and --inpaint-scene will not run." ;;
+      demo) echo "  demo  -- demo.py will not run (it segments the people with SAM)." ;;
     esac
   done
   echo
