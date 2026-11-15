@@ -201,13 +201,11 @@ Apache-2.0 (Meta), with our changes recorded in
 If you find our work useful, please consider citing:
 
 ```bibtex
-@misc{ym2026graft,
-  title        = {GRAFT: Geometric Refinement and Fitting Transformer for Human Scene Reconstruction},
-  author       = {Pradyumna YM and Yuxuan Xue and Yue Chen and Nikita Kister and Istv{\'a}n S{\'a}r{\'a}ndi and Gerard Pons-Moll},
-  year         = {2026},
-  eprint       = {2604.19624},
-  archivePrefix = {arXiv},
-  url          = {https://arxiv.org/abs/2604.19624},
+@inproceedings{ym2026graft,
+  title     = {GRAFT: Geometric Refinement and Fitting Transformer for Human Scene Reconstruction},
+  author    = {Pradyumna YM and Yuxuan Xue and Yue Chen and Nikita Kister and Istv{\'a}n S{\'a}r{\'a}ndi and Gerard Pons-Moll},
+  booktitle = {European Conference on Computer Vision (ECCV)},
+  year      = {2026},
 }
 ```
 
